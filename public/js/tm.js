@@ -17,12 +17,11 @@
 
         initTM: function() {
 
-            // script per lo slide del pannello di manage tmx
+// script per lo slide del pannello di manage tmx
             UI.setDropDown();
             UI.initOptionsTip();
             UI.initTmxTooltips();
             UI.checkTMKeysUpdateChecks();
-            UI.checkCrossLanguageSettings();
             $(".popup-tm .x-popup, .popup-tm h1 .continue").click(function(e) {
                 e.preventDefault();
                 UI.closeTMPanel();
@@ -69,14 +68,14 @@
                 if($(this).val() == 0) {
                     $('table.mgmt-mt tr.activemt').removeClass('activemt');
                 } else {
-                    var checkbox = $('table.mgmt-mt tr[data-id=' + $(this).val() + '] .enable-mt input');
+                    checkbox = $('table.mgmt-mt tr[data-id=' + $(this).val() + '] .enable-mt input');
                     UI.activateMT(checkbox);
                 }
             });
             $("#mt_engine_int").change(function() {
                 // $('#add-mt-provider-cancel').hide();
                 $('#mt-provider-details .error').empty();
-                $('#add-mt-provider-confirm').addClass('disabled');
+
                 $(".insert-tm").show();
                 var provider = $(this).val();
                 if(provider == 'none') {
@@ -90,13 +89,6 @@
                     $(".step2").show();
                     $(".step3").show();
                     $("#add-mt-provider-confirm").removeClass('hide');
-                }
-                if (provider === 'letsmt') {
-                    // Tilde MT (letsmt) uses a standalone web component
-                    // we'll hide the button because it's easier to use the webcomponent's builtin buttons
-                    $("#add-mt-provider-confirm").addClass('hide');
-                    // when done, we'll want to simulate clicking the original button. for this it must be enabled
-                    $("#add-mt-provider-confirm").removeClass('disabled');
                 }
             });
             $(".add-mt-engine").click(function() {
@@ -119,12 +111,12 @@
                 if (provider === 'mmt') {
                     var props = {
                         modalName: 'mmt-message-modal',
-                        text: 'ModernMT is an <b>Adaptive Neural Machine Translation</b> system that learns from your translation memories and corrections. </br></br> ' +
-                        'To provide the best results, <b>the following data will be synchronized with your private ModernMT engine:</b>' +
+                        text: 'MMT is an <b>Adaptive Neural Machine Translation</b> system that learns from your translation memories and corrections. </br></br> ' +
+                        'To provide the best results, <b>the following data will be synchronized with your private MMT engine:</b>' +
                         '<ul style="list-style: disc; margin-left: 15px; margin-bottom: 20px; margin-top: 20px;">' +
                         '<li>Private translation memories uploaded to MateCat</li>' +
                         '<li>All segments translated or revised in MateCat</li></ul>' +
-                        'To stop data from being synchronized, please delete the ModernMT engine from your list of available engines in MateCat.',
+                        'To stop data from being synchronized, please delete the MMT engine from your list of available engines in MateCat.',
                         successText: "Continue",
                         successCallback: function() {
                             UI.addMTEngine(provider, providerName);
@@ -355,11 +347,9 @@
                     e.preventDefault();
                     UI.clickOnShareButton($(this).parent().find('.share-button'));
                 }
-            }).on('change', '#multi-match-1, #multi-match-2', function ( ) {
-                UI.storeMultiMatchLangs();
             });
             $(".popup-tm.slide-panel").on("scroll", function(){
-                if (!isVisible($(".active-tm-container thead"))) {
+                if (!isVisible($(".active-tm-container h3"))) {
                     $('.active-tm-container .notification-message').addClass('fixed-msg');
                 }
                 else {
@@ -378,30 +368,30 @@
             $(document).ready(function() {
 
                 UI.setTMsortable();
-                // $("#inactivetm").tablesorter({
-                //     textExtraction: function(node) {
-                //         // extract data from markup and return it
-                //         if($(node).hasClass('privatekey')) {
-                //             return $(node).text();
-                //         } else {
-                //             return $(node).text();
-                //         }
-                //     },
-                //     headers: {
-                //         4: {
-                //             sorter: true
-                //         },
-                //         5: {
-                //             sorter: false
-                //         },
-                //         6: {
-                //             sorter: false
-                //         },
-                //         7: {
-                //             sorter: false
-                //         }
-                //     }
-                // });
+                $("#inactivetm").tablesorter({
+                    textExtraction: function(node) {
+                        // extract data from markup and return it
+                        if($(node).hasClass('privatekey')) {
+                            return $(node).text();
+                        } else {
+                            return $(node).text();
+                        }
+                    },
+                    headers: {
+                        4: {
+                            sorter: true
+                        },
+                        5: {
+                            sorter: false
+                        },
+                        6: {
+                            sorter: false
+                        },
+                        7: {
+                            sorter: false
+                        }
+                    }
+                });
                 UI.checkCreateTmKeyFromQueryString();
                 UI.checkOpenTabFromParameters();
             });
@@ -1237,7 +1227,7 @@
             $( ".popup-tm").removeClass('open').animate({right: '-1100px' }, 400);
             $(".outer-tm").hide();
             $('body').removeClass('side-popup');
-            Cookies.set('tmpanel-open', 0, { path: '/' });
+            $.cookie('tmpanel-open', 0, { path: '/' });
             if((!APP.isCattool)&&(!checkAnalyzability('closing tmx panel'))) {
                 disableAnalyze();
                 if(!checkAnalyzabilityTimer) var checkAnalyzabilityTimer = window.setInterval( function () {
@@ -1304,7 +1294,7 @@
 
                     //check for cookie equals to it's value.
                     //This is unique by definition and we can do multiple downloads
-                    var token = Cookies.get( downloadToken );
+                    var token = $.cookie( downloadToken );
 
                     //if the cookie is found, download is completed
                     //remove iframe an re-enable download button
@@ -1312,7 +1302,7 @@
                         window.clearInterval( downloadTimer );
                         elem.removeClass( 'disabled' );
                         tr.find('.uploadloader').hide();
-                        Cookies.set( downloadToken, null, {path: '/', expires: -1} );
+                        $.cookie( downloadToken, null, {path: '/', expires: -1} );
                         errorMsg = $( '#' + iFrameID ).contents().find( 'body' ).text();
                         errorKey = $( tr ).attr( 'data-key' );
                         if ( errorMsg != '' ) {
@@ -1359,8 +1349,8 @@
             var tr = button.closest('tr');
             var id = tr.data("id");
             $('.mgmt-table-mt .tm-warning-message').html('Do you really want to delete this MT? ' +
-                '<a class="pull-right btn-orange-small cancelDeletingMT cancel-tm-key-delete">      <span class="text"></span>   </a>' +
-                '<a class="pull-right btn-confirm-small continueDeletingMT confirm-tm-key-delete">       <span class="text">Confirm</span>   </a>').show();
+                '<a class="pull-right btn-confirm-small continueDeletingMT confirm-tm-key-delete" style="display: inline; margin: 0 10px;padding: 0">       <span class="text">Confirm</span>   </a>' +
+                '<a class="pull-right btn-orange-small cancelDeletingMT cancel-tm-key-delete">      <span class="text"></span>   </a>').show();
             $('.continueDeletingMT, .cancelDeletingMT').off('click');
             $('.continueDeletingMT').on('click', function(e){
                 e.preventDefault();
@@ -1374,7 +1364,7 @@
         },
         showDeleteTmMessage: function (button) {
             $("tr.tm-key-deleting").removeClass('tm-key-deleting');
-            var message = 'Do you really want to delete this resource (<b>XXX</b>)? ' +
+            var message = 'Do you really want to delete the resource "YYY" (XXX)? ' +
                     '<a class="pull-right btn-orange-medium cancelDelete cancel-tm-key-delete">      <span class="text"></span>   </a>' +
                     '<a class="pull-right btn-confirm-small confirmDelete confirm-tm-key-delete" style="display: inline;">       <span class="text">Confirm</span>   </a>';
             var elem = $(button).closest("table");
@@ -1383,7 +1373,7 @@
             var key = tr.find('.privatekey').text();
             var descr = tr.find('.edit-desc').data('descr');
             message = message.replace('XXX', key);
-            // message = message.replace('YYY', descr);
+            message = message.replace('YYY', descr);
             if (elem.attr("id") === "activetm") {
                 UI.showWarningOnActiveTMTable(message);
             } else {
@@ -1392,23 +1382,20 @@
             var removeListeners = function () {
                 $('.confirm-tm-key-delete, .cancel-tm-key-delete').off('click');
             };
-            setTimeout(function (  ) {
-                $('.confirm-tm-key-delete').off('click');
-                $('.confirm-tm-key-delete').on('click', function (e) {
-                    e.preventDefault();
-                    UI.deleteTM(button);
-                    UI.hideAllBoxOnTables();
-                    removeListeners();
-                });
-                $('.cancel-tm-key-delete').off('click');
-                $('.cancel-tm-key-delete').on('click', function (e) {
-                    e.preventDefault();
-                    UI.hideAllBoxOnTables();
-                    $("tr.tm-key-deleting").removeClass('tm-key-deleting');
-                    removeListeners();
-                });
-            }, 200);
-
+            $('.confirm-tm-key-delete').off('click');
+            $('.confirm-tm-key-delete').on('click', function (e) {
+                e.preventDefault();
+                UI.deleteTM(button);
+                UI.hideAllBoxOnTables();
+                removeListeners();
+            });
+            $('.cancel-tm-key-delete').off('click');
+            $('.cancel-tm-key-delete').on('click', function (e) {
+                e.preventDefault();
+                UI.hideAllBoxOnTables();
+                $("tr.tm-key-deleting").removeClass('tm-key-deleting');
+                removeListeners();
+            });
         },
         deleteTM: function (button) {
             tr = $(button).parents('tr').first();
@@ -1513,8 +1500,8 @@
         },
         renderNewMT: function (data, serverResponse) {
             var newTR =    '<tr data-id="' + serverResponse.id + '">' +
-                '    <td class="mt-provider"> ' + serverResponse.name + ' </td>' +
-                '    <td class="engine-name">' + data.providerName + '</td>' +
+                '    <td class="mt-provider">' + data.providerName + '</td>' +
+                '    <td class="engine-name">' + serverResponse.name + '</td>' +
                 '    <td class="enable-mt text-center">' +
                 '        <input type="checkbox" checked />' +
                 '    </td>' +
@@ -1909,11 +1896,6 @@
             if (type == 'tmx') {
                 label = '<p class="pull-left">Select TMX file to import</p>';
                 format = '.tmx';
-                if ($(elem).parents('tr').find('.uploadfile').length > 0 ) {
-                    // $(elem).parents('tr').find('.uploadfile').slideToggle();
-                    $(elem).closest("tr").find('.action a').addClass('disabled');
-                    return;
-                }
             } else if (type == 'glossary') {
                 label = '<p class="pull-left">Select glossary in XLSX format ' +
                         '   <a href="http://www.matecat.com/support/managing-language-resources/add-glossary/" target="_blank">(How-to)</a>' +
@@ -1947,36 +1929,23 @@
             $(elem).parents('tr').find('.uploadfile').slideToggle();
         },
         showErrorOnActiveTMTable: function (message) {
-            setTimeout(function (  ) {
-                $('.mgmt-container .active-tm-container .tm-error-message').html(message).fadeIn(100);
-            });
+            $('.mgmt-container .active-tm-container .tm-error-message').html(message).fadeIn(100);
         },
         showErrorOnInactiveTMTable: function (message) {
-            setTimeout(function (  ) {
-                $('.mgmt-container .inactive-tm-container .tm-error-message').html(message).fadeIn(100);
-            });
+            $('.mgmt-container .inactive-tm-container .tm-error-message').html(message).fadeIn(100);
         },
         showWarningOnActiveTMTable: function (message) {
-            setTimeout(function (  ) {
-                $('.mgmt-container .active-tm-container .tm-warning-message').html(message).fadeIn(100);
-            });
+            $('.mgmt-container .active-tm-container .tm-warning-message').html(message).fadeIn(100);
         },
         showWarningOnInactiveTMTable: function (message) {
-            setTimeout(function (  ) {
-                $('.mgmt-container .inactive-tm-container .tm-warning-message').html(message).fadeIn(100);
-            });
+            $('.mgmt-container .inactive-tm-container .tm-warning-message').html(message).fadeIn(100);
         },
         showSuccessOnActiveTMTable: function (message) {
-            setTimeout(function (  ) {
-                $('.mgmt-container .active-tm-container .tm-success-message').html(message).fadeIn(100);
-            });
+            $('.mgmt-container .active-tm-container .tm-success-message').html(message).fadeIn(100);
         },
         showSuccessOnInactiveTMTable: function (message) {
-            setTimeout(function (  ) {
-                $( '.mgmt-container .inactive-tm-container .tm-success-message' ).html( message ).fadeIn( 100 );
-            });
+            $('.mgmt-container .inactive-tm-container .tm-success-message').html(message).fadeIn(100);
         },
-
         hideAllBoxOnTables: function () {
             $('.mgmt-container .active-tm-container .tm-error-message, .mgmt-container .active-tm-container .tm-warning-message, .mgmt-container .active-tm-container .tm-success-message,' +
                 '.mgmt-container .inactive-tm-container .tm-error-message, .mgmt-container .inactive-tm-container .tm-warning-message, .mgmt-container .inactive-tm-container .tm-success-message,' +
@@ -2006,7 +1975,7 @@
 
             $(".tooltip-lexiqa").data("powertip", lexiqaText);
             $(".tooltip-lexiqa").powerTip({
-                placement : 's',
+                placement : 'n',
                 mouseOnToPopup: true
 
             });
@@ -2082,7 +2051,7 @@
             var tr = button.closest('tr');
             var key = ( tr.length ) ? tr.data('key') : button.closest('.share-popup-container').find('.share-popup-key').text();
             var descr = ( tr.length ) ? tr.find('.edit-desc').data('descr') : button.closest('.share-popup-container').find('.share-popup-description').text();
-            var msg = 'The resource <span style="font-weight: bold">' + key +'</span> has been shared.';
+            var msg = 'The resource <span style="font-weight: bold">"' + descr + '" (' + key + ')' +'</span> has been shared.';
 
             var validateEmail = function(emails) {
                 var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -2170,43 +2139,6 @@
                     UI.showErrorOnActiveTMTable('There was a problem sharing the key, try again or contact the support.');
                 }
             });
-        },
-
-        storeMultiMatchLangs: function (  ) {
-            var primary = ( $('#multi-match-1').val() ) ? $('#multi-match-1').val() : undefined;
-            var secondary = ( $('#multi-match-2').val() ) ? $('#multi-match-2').val() : undefined;
-            if ( primary ) {
-                $('#multi-match-2').removeAttr('disabled');
-            } else {
-                $('#multi-match-2').attr('disabled', true);
-                $('#multi-match-2').val('');
-                secondary = undefined;
-            }
-            UI.crossLanguageSettings = {primary: primary, secondary: secondary};
-            localStorage.setItem("multiMatchLangs", JSON.stringify(UI.crossLanguageSettings));
-            if ( UI.getContribution ) {
-                if ( primary ) {
-                    SegmentActions.modifyTabVisibility( 'multiMatches', true );
-                    $( 'section.loaded' ).removeClass( 'loaded' );
-                    UI.getContribution( UI.currentSegment, 0 );
-                } else {
-                    SegmentActions.modifyTabVisibility( 'multiMatches', false );
-                }
-            }
-        },
-
-        checkCrossLanguageSettings: function (  ) {
-            var settings = localStorage.getItem("multiMatchLangs");
-            if ( settings ) {
-                var selectPrimary = $('#multi-match-1');
-                var selectSecondary = $('#multi-match-2');
-                settings = JSON.parse(settings)
-                UI.crossLanguageSettings = settings;
-                selectPrimary.val(settings.primary);
-                selectSecondary.val(settings.secondary);
-                if ( settings.primary )
-                    selectSecondary.removeAttr('disabled');
-            }
         }
 
     });

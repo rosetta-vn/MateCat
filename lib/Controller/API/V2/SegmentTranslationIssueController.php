@@ -1,18 +1,20 @@
 <?php
 
 namespace API\V2  ;
-use API\App\AbstractStatefulKleinController;
 use API\V2\Json\SegmentTranslationIssue as JsonFormatter;
 use Features\ReviewImproved;
 use LQA\EntryDao as EntryDao ;
 use Database;
 
-class SegmentTranslationIssueController extends AbstractStatefulKleinController {
+class SegmentTranslationIssueController extends KleinController {
 
+    private $chunk ;
+    private $project ;
     /**
      * @var Validators\SegmentTranslationIssue
      */
     private $validator ;
+    private $segment ;
     private $issue ;
 
     public function index() {
@@ -23,12 +25,14 @@ class SegmentTranslationIssueController extends AbstractStatefulKleinController 
         );
 
         $json = new JsonFormatter( );
-        $rendered = $json->render( $result );
+        $rendered = $json->renderArray( $result );
 
         $this->response->json( array('issues' => $rendered) );
     }
 
     public function create() {
+
+        \Bootstrap::sessionStart();
 
         $data = array(
             'id_segment'          => $this->request->id_segment,
@@ -43,7 +47,7 @@ class SegmentTranslationIssueController extends AbstractStatefulKleinController 
             'end_offset'          => $this->request->end_offset,
             'is_full_segment'     => false,
             'comment'             => $this->request->comment,
-            'uid'                 => $this->user->uid
+            'uid'                 => $_SESSION['uid']
         );
 
         $struct = new \LQA\EntryStruct( $data );
@@ -53,10 +57,6 @@ class SegmentTranslationIssueController extends AbstractStatefulKleinController 
             $this->request->password,
             $struct
         ) ;
-
-        if ( $this->request->diff ) {
-            $model->setDiff( $this->request->diff ) ;
-        }
 
         $struct = $model->save();
 
@@ -91,27 +91,11 @@ class SegmentTranslationIssueController extends AbstractStatefulKleinController 
 
     public function delete() {
 
-        $project = \Projects_ProjectDao::findByJobId($this->request->id_job);
-
-        $this->featureSet->loadForProject($project);
-        $codes = $this->featureSet->getCodes();
-
-        if(in_array(\Features::REVIEW_EXTENDED, $codes)){
-            $model = new \Features\ReviewExtended\TranslationIssueModel(
-                    $this->request->id_job,
-                    $this->validator->getChunkReview()->password,
-                    $this->validator->issue
-            );
-        }
-        else {
-            $model = new ReviewImproved\TranslationIssueModel(
-                    $this->request->id_job,
-                    $this->validator->getChunkReview()->password,
-                    $this->validator->issue
-            );
-        }
-
-
+        $model = new ReviewImproved\TranslationIssueModel(
+            $this->request->id_job,
+            $this->validator->getChunkReview()->password,
+            $this->validator->issue
+        );
 
         $model->delete();
 
@@ -120,7 +104,10 @@ class SegmentTranslationIssueController extends AbstractStatefulKleinController 
 
     protected function afterConstruct() {
         $this->validator = new Validators\SegmentTranslationIssue( $this->request );
-        $this->appendValidator( $this->validator );
+    }
+
+    protected function validateRequest() {
+        $this->validator->validate();
     }
 
     private function getVersionNumber() {

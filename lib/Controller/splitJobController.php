@@ -7,6 +7,11 @@
  *
  */
 
+include_once INIT::$UTILS_ROOT . '/AjaxPasswordCheck.php';
+include_once INIT::$UTILS_ROOT . '/RecursiveArrayObject.php';
+include_once INIT::$UTILS_ROOT . '/ProjectManager.php';
+include_once INIT::$UTILS_ROOT . '/CatUtils.php';
+include_once INIT::$UTILS_ROOT . '/Log.php';
 
 class splitJobController extends ajaxController {
 
@@ -33,8 +38,6 @@ class splitJobController extends ajaxController {
         //SESSION ENABLED
         parent::sessionStart();
         parent::__construct();
-
-        $this->setUserCredentials();
 
         $filterArgs = array(
                 'exec'         => array(
@@ -80,12 +83,6 @@ class splitJobController extends ajaxController {
             $this->project_struct = \Projects_ProjectDao::findByIdAndPassword( $this->project_id, $this->project_pass, 60 * 60 );
 
             $pManager = new ProjectManager();
-
-            if ( $this->user ) {
-                $projectStructure[ 'userIsLogged' ] = true;
-                $projectStructure[ 'uid' ]          = $this->user->getUid();
-            }
-
             $pManager->setProjectAndReLoadFeatures( $this->project_struct );
 
             $pStruct = $pManager->getProjectStructure();
@@ -145,7 +142,6 @@ class splitJobController extends ajaxController {
             throw new Exception( "Wrong Password. Access denied", -10 );
         }
 
-        $this->project_struct->getFeatures()->run('checkSplitAccess', $jobList ) ;
     }
 
     protected function filterJobsById(  array $jobList  ){

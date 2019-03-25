@@ -26,24 +26,13 @@ class ProjectAnonymous extends Project {
     }
 
     /**
-     * @param bool $called_from_api
-     *
-     * @return $this
-     */
-    public function setCalledFromApi( $called_from_api ) {
-        return $this;
-    }
-
-    /**
-     * @param $project Projects_ProjectStruct
+     * @param $data Projects_ProjectStruct
      *
      * @return array
-     * @throws \Exception
-     * @throws \Exceptions\NotFoundException
      */
-    public function renderItem( Projects_ProjectStruct $project ) {
+    public function renderItem( Projects_ProjectStruct $data ) {
 
-        $projectOutputFields = parent::renderItem( $project );
+        $projectOutputFields = parent::renderItem( $data );
         unset( $projectOutputFields[ 'id_team' ] );
         unset( $projectOutputFields[ 'id_assignee' ] );
 

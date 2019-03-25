@@ -2,15 +2,13 @@
 
 namespace API\V2;
 
-use AbstractControllers\IController;
 use API\V2\Exceptions\AuthenticationError;
 use API\V2\Validators\Base;
 use ApiKeys_ApiKeyStruct;
 use AuthCookie;
-use FeatureSet;
 use Users_UserDao;
 
-abstract class KleinController implements IController {
+abstract class KleinController {
 
     /**
      * @var \Klein\Request
@@ -50,42 +48,6 @@ abstract class KleinController implements IController {
     public $params;
 
     /**
-     * @var FeatureSet
-     */
-    protected $featureSet;
-
-    /**
-     * @var bool
-     */
-    protected $userIsLogged = false;
-
-    /**
-     * @return FeatureSet
-     */
-    public function getFeatureSet() {
-        return $this->featureSet;
-    }
-
-    /**
-     * @param FeatureSet $featuresSet
-     *
-     * @return $this
-     */
-    public function setFeatureSet( FeatureSet $featuresSet ) {
-        $this->featureSet = $featuresSet;
-
-        return $this;
-    }
-
-    public function getUser(){
-        return $this->user;
-    }
-
-    public function userIsLogged(){
-        return $this->userIsLogged;
-    }
-
-    /**
      * @return mixed
      */
     public function getParams() {
@@ -102,25 +64,17 @@ abstract class KleinController implements IController {
         $paramsGet = $this->request->paramsNamed()->getIterator()->getArrayCopy();
         $this->params = $this->request->paramsPost()->getIterator()->getArrayCopy();
         $this->params = array_merge( $this->params, $paramsGet, ( empty( $paramsPut ) ? [] : $paramsPut ) );
-        $this->featureSet = new FeatureSet();
-        $this->authenticate();
-    }
 
-    public function authenticate(){
-        $this->validateAuth();
-        $this->identifyUser();
         $this->afterConstruct();
-    }
 
-    public function performValidations(){
-        $this->validateRequest();
     }
 
     public function respond( $method ) {
         $start = microtime(true) ;
 
-        $this->performValidations();
-
+        $this->validateAuth();
+        $this->identifyUser();
+        $this->validateRequest();
         if ( !$this->response->isLocked() ) {
             $this->$method();
         }
@@ -176,10 +130,10 @@ abstract class KleinController implements IController {
             $this->user = $dao->getByUid( $user_credentials[ 'uid' ] ) ;
         }
 
-        if( empty( $this->user ) ){
-            $this->userIsLogged = true;
-        }
+        return $this->user;
+    }
 
+    public function getUser(){
         return $this->user;
     }
 
@@ -208,12 +162,10 @@ abstract class KleinController implements IController {
         foreach( $this->validators as $validator ){
             $validator->validate();
         }
-        $this->validators = [];
     }
 
     protected function appendValidator( Base $validator ){
         $this->validators[] = $validator;
-        return $this;
     }
 
     /**
@@ -245,19 +197,20 @@ abstract class KleinController implements IController {
         $this->downloadToken = null;
     }
 
-    protected function afterConstruct() {}
+    protected function afterConstruct() {
+    }
 
     protected function _logWithTime( $time ) {
         $previous_filename = \Log::$fileName ;
         \Log::$fileName = 'API.log' ;
 
-        $log_string = " " . $this->request->method() . " " . $this->request->pathname() . " " . round( $time, 4 ) ;
+        $log_string = " " . $this->request->pathname() . " " . round( $time, 4 ) ;
 
         if ( $this->api_key ) {
             $log_string .= " key:" . $this->api_key ;
         }
 
-        \Log::doLog( $log_string . " " . json_encode( $this->params ) );
+        \Log::doLog( $log_string  );
         \Log::$fileName = $previous_filename ;
     }
 

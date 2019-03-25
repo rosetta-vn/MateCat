@@ -19,8 +19,7 @@ class ModifyTeam extends React.Component {
     onLabelCreate(value, text){
         var self = this;
 
-        // if ( APP.checkEmail(text) && event.key === 'Enter') {
-        if ( APP.checkEmail(text) ) {
+        if ( APP.checkEmail(text) && event.key === 'Enter') {
             $(this.inputNewUSer)
                 .dropdown('set selected', value);
             this.setState({

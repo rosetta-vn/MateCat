@@ -55,9 +55,14 @@ class Engines_MMT extends Engines_AbstractEngine {
     ];
 
     protected function _getClient(){
-        return Engines\MMT\MMTServiceAPIWrapper::newInstance()
-                ->setIdentity( "1.1", "MateCat", INIT::MATECAT_USER_AGENT . INIT::$BUILD_NUMBER )
-                ->setLicense( $this->engineRecord->extra_parameters[ 'MMT-License' ] );
+        return new Engines\MMT\MMTServiceAPIWrapper(
+                null,
+                null,
+                $this->engineRecord->extra_parameters[ 'MMT-License' ],
+                "1.0",
+                "MateCat",
+                INIT::MATECAT_USER_AGENT . INIT::$BUILD_NUMBER
+        );
     }
 
     /**
@@ -73,49 +78,28 @@ class Engines_MMT extends Engines_AbstractEngine {
 
     public function get( $_config ) {
 
-        //This is not really needed because by default in analysis the Engine_MMT is accepted by MyMemory
         if ( $this->_isAnalysis && $this->_skipAnalysis ) {
-            return [];
+            return null;
         }
 
         $client = $this->_getClient();
 
         $_keys = $this->_reMapKeyList( @$_config[ 'keys' ] );
 
-        try{
-            $translation = $client->translate( $_config[ 'source' ], $_config[ 'target' ], $_config[ 'segment' ], @$_config[ 'mt_context' ], $_keys, @$_config[ 'job_id' ], static::GET_REQUEST_TIMEOUT );
-            return ( new Engines_Results_MyMemory_Matches(
-                    $_config[ 'segment' ],
+        $text = $this->_preserveSpecialStrings( $_config[ 'segment' ] );
+        $translation = $client->translate( $_config[ 'source' ], $_config[ 'target' ], $text, @$_config[ 'mt_context' ], $_keys, @$_config[ 'job_id' ] );
+
+        if( !empty( $translation[ 'translation' ] ) ){
+            $this->result = ( new Engines_Results_MyMemory_Matches(
+                    $this->_resetSpecialStrings( $text ),
                     $translation[ 'translation' ],
                     100 - $this->getPenalty() . "%",
                     "MT-" . $this->getName(),
                     date( "Y-m-d" )
-            ) )->getMatches();
-        } catch( Exception $e ){
-            return $this->fallback( $_config );
+            ) )->get_as_array();
         }
 
-    }
-
-    protected function fallback( $_config ){
-
-        /**
-         * Create a record of type GoogleTranslate
-         */
-        $newEngineStruct = EnginesModel_GoogleTranslateStruct::getStruct();
-
-        $newEngineStruct->name                                = "Generic";
-        $newEngineStruct->uid                                 = 0;
-        $newEngineStruct->type                                = Constants_Engines::MT;
-        $newEngineStruct->extra_parameters[ 'client_secret' ] = $_config[ 'secret_key' ];
-        $newEngineStruct->others                              = [];
-
-        $gtEngine = Engine::createTempInstance( $newEngineStruct );
-
-        /**
-         * @var $gtEngine Engines_GoogleTranslate
-         */
-        return $gtEngine->get( $_config );
+        return $this->result;
 
     }
 
@@ -341,6 +325,9 @@ class Engines_MMT extends Engines_AbstractEngine {
         }
 
         switch ( $functionName ) {
+            case 'tags_projection' :
+                $result_object = Engines_Results_MMT_TagProjectionResponse::getInstance( $decoded );
+                break;
             default:
                 //this case should not be reached
                 $result_object = Engines_Results_MMT_ExceptionError::getInstance( [
@@ -355,6 +342,33 @@ class Engines_MMT extends Engines_AbstractEngine {
         }
 
         return $result_object;
+
+    }
+
+    /**
+     * TODO FixMe whit the url parameter and method extracted from engine record on the database
+     * when MyMemory TagProjection will be public
+     *
+     * @param $config
+     *
+     * @return array|Engines_Results_MMT_TagProjectionResponse
+     */
+    public function getTagProjection( $config ){
+
+        $parameters           = array();
+        $parameters[ 's' ]    = $config[ 'source' ];
+        $parameters[ 't' ]    = $config[ 'target' ];
+        $parameters[ 'hint' ] = $config[ 'suggestion' ];
+
+        /*
+         * For now override the base url and the function params
+         */
+        $this->engineRecord[ 'base_url' ] = 'http://149.7.212.129:10000';
+        $this->engineRecord->others[ 'tags_projection' ] = 'tags-projection/' . $config[ 'source_lang' ] . "/" . $config[ 'target_lang' ] . "/";
+
+        $this->call( 'tags_projection', $parameters );
+
+        return $this->result;
 
     }
 

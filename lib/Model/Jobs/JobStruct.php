@@ -1,7 +1,6 @@
 <?php
 
-use DataAccess\ArrayAccessTrait;
-use Exceptions\NotFoundException;
+use Exceptions\NotFoundError;
 use Outsource\ConfirmationDao;
 use Outsource\ConfirmationStruct;
 use Outsource\TranslatedConfirmationStruct;
@@ -10,9 +9,7 @@ use Translators\JobsTranslatorsDao;
 use Translators\JobsTranslatorsStruct;
 
 class Jobs_JobStruct extends DataAccess_AbstractDaoSilentStruct implements DataAccess_IDaoStruct, \ArrayAccess {
-
-    use ArrayAccessTrait;
-
+    
     public $id;
     public $password;
     public $id_project;
@@ -39,16 +36,7 @@ class Jobs_JobStruct extends DataAccess_AbstractDaoSilentStruct implements DataA
     public $status_owner;
     public $status_translator;
     public $status;
-
-    /**
-     * Column 'completed' cannot be null, moreover it is BIT(1) and
-     * PDO does not works well in this case without explicitly
-     * tell him that this is an INT.
-     * So, we can't set 0 because it will be treated as string, set it to false, it works.
-     * @see https://bugs.php.net/bug.php?id=50757
-     */
-    public $completed = false; //Column 'completed' cannot be null
-
+    public $completed = 0; //Column 'completed' cannot be null
     public $new_words;
     public $draft_words;
     public $translated_words;
@@ -83,22 +71,6 @@ class Jobs_JobStruct extends DataAccess_AbstractDaoSilentStruct implements DataA
      */
     protected $_openThreads;
 
-    protected $is_review;
-
-    /**
-     *
-     * @return array
-     */
-    public function getTMProps(){
-        $projectData = $this->getProject();
-        $result = [
-                'project_id'   => $projectData->id,
-                'project_name' => $projectData->name,
-                'job_id'       => $this->id,
-        ];
-        return $result;
-    }
-
     /**
      * @return JobsTranslatorsStruct
      */
@@ -115,7 +87,7 @@ class Jobs_JobStruct extends DataAccess_AbstractDaoSilentStruct implements DataA
 
     /**
      * @return ConfirmationStruct
-     * @throws NotFoundException
+     * @throws NotFoundError
      */
     public function getOutsource() {
 
@@ -131,7 +103,7 @@ class Jobs_JobStruct extends DataAccess_AbstractDaoSilentStruct implements DataA
                 //Ok Do Nothing
                 break;
             default:
-                throw new NotFoundException( "Vendor id " . $this->_outsource->id_vendor . " not found." );
+                throw new NotFoundError( "Vendor id " . $this->_outsource->id_vendor . " not found." );
                 break;
         }
 
@@ -175,7 +147,7 @@ class Jobs_JobStruct extends DataAccess_AbstractDaoSilentStruct implements DataA
 
         return $this->cachable( __function__, $this, function ( $job ) {
             $mDao = new Projects_MetadataDao();
-            return $mDao->setCacheTTL( 60 * 60 * 24 * 30 )->allByProjectId( $job->id_project );
+            return $mDao->setCacheTTL( 60 * 60 )->allByProjectId( $job->id_project );
         } );
 
     }
@@ -251,14 +223,29 @@ class Jobs_JobStruct extends DataAccess_AbstractDaoSilentStruct implements DataA
      * @return Chunks_ChunkStruct[]
      */
     public function getChunks() {
-        return $this->cachable(__METHOD__, $this, function($obj) {
-            return Chunks_ChunkDao::getByJobID( $obj->id ) ;
-        }) ;
+        $dao = new Chunks_ChunkDao( Database::obtain() );
+
+        return $dao->getByProjectID( $this->id_project );
     }
 
-    public function getClientKeys( Users_UserStruct $user, $role ){
-        $uKModel = new \TmKeyManagement\UserKeysModel( $user, $role );
-        return $uKModel->getKeys( $this->tm_keys );
+    public function getOwnerKeys(){
+
+        $tm_keys_json = TmKeyManagement_TmKeyManagement::getOwnerKeys( array( $this->tm_keys ) );
+        $tm_keys      = array();
+        foreach ( $tm_keys_json as $tm_key_struct ) {
+            /**
+             * @var $tm_key_struct TmKeyManagement_TmKeyStruct
+             */
+            $tm_keys[] = array(
+                    "key"  => $tm_key_struct->key,
+                    "r"    => ( $tm_key_struct->r ) ? 'Lookup' : '&nbsp;',
+                    "w"    => ( $tm_key_struct->w ) ? 'Update' : '',
+                    "name" => $tm_key_struct->name
+            );
+        }
+
+        return $tm_keys;
+
     }
 
     public function getPeeForTranslatedSegments(){
@@ -281,21 +268,39 @@ class Jobs_JobStruct extends DataAccess_AbstractDaoSilentStruct implements DataA
         $this->rejected_words;
     }
 
-    public function isCanceled() {
-        return $this->status == Constants_JobStatus::STATUS_CANCELLED ;
+    /**
+     * This method is executed when using isset() or empty() on objects implementing ArrayAccess.
+     *
+     * @param mixed $offset
+     *
+     * @return bool
+     */
+    public function offsetExists( $offset ) {
+        return property_exists( $this, $offset );
     }
 
-    public function isArchived() {
-        return $this->status == Constants_JobStatus::STATUS_ARCHIVED ;
+    /**
+     * @param mixed $offset
+     *
+     * @returns mixed
+     */
+    public function offsetGet( $offset ) {
+        return $this->__get( $offset );
     }
 
-    public function setIsReview($is_review){
-        $this->is_review = $is_review;
-        return $this;
+    /**
+     * @param mixed $offset
+     * @param mixed $value
+     */
+    public function offsetSet( $offset, $value ) {
+        $this->__set( $offset, $value );
     }
 
-    public function getIsReview(){
-        return $this->is_review;
+    /**
+     * @param mixed $offset
+     */
+    public function offsetUnset( $offset ) {
+        $this->__set( $offset, null );
     }
 
 }

@@ -36,7 +36,7 @@ class Client {
         $this->curl()->multiExec();
     }
 
-    public function setSession( ISession $session ) {
+    public function setSession( Session $session ) {
         $this->session = $session ;
     }
 
@@ -115,10 +115,6 @@ class Client {
 
         elseif ( $method == 'put' ) {
             $curlopts[ CURLOPT_CUSTOMREQUEST ] = 'PUT' ;
-        }
-
-        elseif ( $method == 'delete' ) {
-            $curlopts[ CURLOPT_CUSTOMREQUEST ] = 'DELETE' ;
         }
 
         if ( isset( $params['json'] ) ) {

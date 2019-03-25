@@ -5,8 +5,8 @@
             config = {} ;
         }
         config.userMail  = '${userMail}';
-        config.userFullName = "${extended_user}";
-        config.userShortName = "${logged_user}";
+        config.userFullName = '${extended_user}';
+        config.userShortName = '${logged_user}';
         config.isLoggedIn = ${isLoggedIn|string:false};
         config.gdriveAuthURL = ${structure php:json_encode(gdriveAuthURL)} ;
         config.authURL = ${structure php:json_encode(authURL)} ;
@@ -16,7 +16,7 @@
 
     <tal:block tal:repeat="config_data config_js">
         /*<![CDATA[*/
-        config.pluggable = ${structure php: json_encode( config_data )} ;
+        config.plugin_data = ${structure php: json_encode( config_data )} ;
         /*]]>*/
     </tal:block>
 
@@ -57,14 +57,24 @@
         <script type="text/javascript" tal:attributes="src js_source"></script>
     </tal:block>
 
-    <tal:block  tal:repeat="css_url css_resources">
-        <link rel="stylesheet" tal:attributes="href css_url"></link>
-    </tal:block>
-
-
     <div id="modal" style="z-index: 999999999"></div>
 </div>
 
+
+
+<!--<div metal:define-macro="login_includes" style="float: left">-->
+    <!--<tal:block tal:condition="php: empty(logged_user)">-->
+        <!--<div id='welcomebox'>-->
+            <!--<span>Anonymous</span> (<a id='loginlink' class="authLink" href="javascript:void(0);">Login</a>)-->
+        <!--</div>-->
+    <!--</tal:block>-->
+
+    <!--<tal:block tal:condition="php: !empty(logged_user)">-->
+        <!--<div id='welcomebox' tal:attributes="title extended_user">-->
+            <!--<span class="user-menu-preferences" >Profile (${logged_user})</span>-->
+        <!--</div>-->
+    <!--</tal:block>-->
+<!--</div>-->
 
 <div metal:define-macro="login_includes">
     <tal:block tal:condition="php: empty(logged_user)">

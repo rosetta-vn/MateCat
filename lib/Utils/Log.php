@@ -39,8 +39,6 @@ class Log {
 
     public static $uniqID;
 
-    public static $requestID;
-
     protected static function _writeTo( $stringData ) {
 
         // TODO: move this check into Bootstrap
@@ -122,19 +120,7 @@ class Log {
         }
 
         self::_writeTo( $string );
-    }
 
-    public static function doLogRaw($string, $filename=null) {
-        if ( !is_null( $filename ) ) {
-            $old_name = Log::$fileName ;
-            Log::$fileName = $filename ;
-        }
-
-        self::_writeTo( $string );
-
-        if ( !is_null( $filename ) ) {
-            Log::$fileName = $old_name ;
-        }
     }
 
     public static function getLogger() {
@@ -228,13 +214,6 @@ class Log {
      */
     public static function resetLogger(){
         self::$logger = null;
-    }
-
-    public static function getRequestID() {
-        if ( self::$requestID  == null ) {
-            self::$requestID = uniqid() ;
-        }
-        return self::$requestID ;
     }
 
 }

@@ -84,11 +84,6 @@ class AnalyzeChunksResume extends React.Component {
         this.payableValues[idJob] = payable;
     }
 
-    getOpenButton(chunk, index) {
-        return <div className="open-translate ui primary button open"
-                    onClick={this.openOutsourceModal.bind(this, index)}>Translate</div>;
-    }
-
     getResumeJobs() {
         var self = this;
 
@@ -131,7 +126,8 @@ class AnalyzeChunksResume extends React.Component {
                                 </div>
                             </div>
                             <div className="activity-icons">
-                                {self.getOpenButton(chunkJob.toJS(), chunk.jid + '-' + index)}
+                                <div className="open-translate ui primary button open"
+                                     onClick={self.openOutsourceModal.bind(self, chunk.jid + '-' + index)}>Translate</div>
                             </div>
                             <OutsourceContainer project={self.props.project}
                                                 job={chunkJob}
@@ -143,8 +139,7 @@ class AnalyzeChunksResume extends React.Component {
                                                 onClickOutside={self.closeOutsourceModal.bind(self)}
                                                 openOutsource={openOutsource}
                                                 idJobLabel={ chunk.jid +'-'+ index }
-                                                outsourceJobId={self.state.outsourceJobId}
-                            />
+                                                outsourceJobId={self.state.outsourceJobId}/>
                         </div>;
                     });
 
@@ -173,7 +168,7 @@ class AnalyzeChunksResume extends React.Component {
                     let obj = self.props.jobsInfo[indexJob].chunks[0];
                     let password = obj.jpassword;
                     let total_raw = obj.total_raw_word_count_print;
-                    let total_standard = (jobAnalysis.get('totals').first().get('standard_word_count')) ?
+                    let total_standard = jobAnalysis.get('totals').first().get('standard_word_count') ?
                         jobAnalysis.get('totals').first().get('standard_word_count').get(1) : 0;
 
                     let chunkJob = self.props.project.get('jobs').find(function (job) {
@@ -215,11 +210,12 @@ class AnalyzeChunksResume extends React.Component {
                                     </div>
                                 </div>
                                 <div className="activity-icons">
-                                    {(!config.jobAnalysis && config.splitEnabled) ? (
+                                    {!config.jobAnalysis ? (
                                         <div className={"split ui blue basic button " + buttonsClass + ' '}
                                              onClick={self.openSplitModal.bind(self, self.props.jobsInfo[indexJob].jid)}><i className="icon-expand icon"/>Split</div>
                                     ) : (null)}
-                                    {self.getOpenButton(chunkJob.toJS(), self.props.jobsInfo[indexJob].jid)}
+                                    <div className="open-translate ui primary button open"
+                                         onClick={self.openOutsourceModal.bind(self, self.props.jobsInfo[indexJob].jid)}>Translate</div>
                                 </div>
                             </div>
                             <OutsourceContainer project={self.props.project}
@@ -269,9 +265,7 @@ class AnalyzeChunksResume extends React.Component {
         }
     }
 
-    openAnalysisReport(e) {
-        e.preventDefault();
-        e.stopPropagation();
+    openAnalysisReport() {
         this.props.openAnalysisReport();
         this.setState({
             openDetails: !this.state.openDetails
@@ -312,10 +306,7 @@ class AnalyzeChunksResume extends React.Component {
         return ( !nextProps.jobsAnalysis.equals(this.props.jobsAnalysis) ||
             nextProps.status !== this.props.status ||
             nextState.openDetails !== this.state.openDetails ||
-            nextState.outsourceJobId !== this.state.outsourceJobId ||
-            !nextProps.project.equals(this.props.project)
-        )
-
+            nextState.outsourceJobId !== this.state.outsourceJobId)
     }
 
     render() {
@@ -330,15 +321,9 @@ class AnalyzeChunksResume extends React.Component {
                         <p/>
                     </div>
                     <div className="titles-compare">
-                        { !config.isCJK ? (
                         <div className="title-total-words">
                             <h5>Total word count</h5>
                         </div>
-                        ) : (
-                        <div className="title-total-words">
-                            <h5>Total character count</h5>
-                        </div>
-                            )}
                         <div className="title-standard-words">
                             <h5>Industry weighted
                                 <span data-tooltip="As counted by other CAT tools">

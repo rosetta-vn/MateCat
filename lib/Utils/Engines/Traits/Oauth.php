@@ -16,14 +16,6 @@ use Exception;
 
 trait Oauth {
 
-    protected function getAuthParameters(){
-        return array(
-                CURLOPT_POST       => true,
-                CURLOPT_POSTFIELDS => http_build_query( $this->_auth_parameters ), //microsoft doesn't want multi-part form data
-                CURLOPT_TIMEOUT    => 120
-        );
-    }
-
     /**
      * Check for time to live and refresh cache and token info
      *
@@ -36,21 +28,24 @@ trait Oauth {
         $this->_auth_parameters[ 'client_secret' ] = $this->client_secret;
 
         $url = $this->oauth_url;
-        $curl_opt = $this->getAuthParameters();
+        $curl_opt = array(
+                CURLOPT_POST       => true,
+                CURLOPT_POSTFIELDS => http_build_query( $this->_auth_parameters ), //microsoft doesn't want multi-part form data
+                CURLOPT_TIMEOUT    => 120
+        );
 
         $rawValue = $this->_call( $url, $curl_opt );
 
-        if ( $this->isJson( $rawValue ) ){
+        if ( is_string( $rawValue ) ){
             $objResponse = json_decode( $rawValue, true );
-        }
-        else {
+        } else {
             $objResponse = $rawValue;
         }
 
         if ( isset( $objResponse['error'] ) ) {
 
             //format as a normal Translate Response and send to decoder to output the data
-            //$rawValue = $this->_formatAuthenticateError( $objResponse );
+            $rawValue = $this->_formatAuthenticateError( $objResponse );
             $this->result = $this->_decode( $rawValue, $this->_auth_parameters );
 
             //no more valid token
@@ -58,14 +53,9 @@ trait Oauth {
             $this->_setTokenEndLife( -86400 );
 
         } else {
-            if(is_array($objResponse)){
-                $this->token = $objResponse['access_token'];
-                $this->_setTokenEndLife( @$objResponse['expires_in'] );
-            }
-            else{
-                $this->token = $objResponse;
-                $this->_setTokenEndLife( 60 * 10 ); // microsoft token expire in 10 minutes
-            }
+
+            $this->token = $objResponse['access_token'];
+            $this->_setTokenEndLife( @$objResponse['expires_in'] );
 
         }
 
@@ -91,15 +81,6 @@ trait Oauth {
 
     }
 
-    private function isJson( $string ) {
-        if(is_array($string)){
-            return false;
-        }
-        json_decode( $string );
-
-        return ( json_last_error() == JSON_ERROR_NONE );
-    }
-
     public function get( $_config ) {
 
         $cycle = @(int)func_get_arg(1);
@@ -107,6 +88,12 @@ trait Oauth {
         if( $cycle == 10 ){
             return $this->_formatRecursionError();
         }
+
+        $_config[ 'segment' ] = $this->_preserveSpecialStrings( $_config[ 'segment' ] );
+        $_config[ 'source' ] = $this->_fixLangCode( $_config[ 'source' ] );
+        $_config[ 'target' ] = $this->_fixLangCode( $_config[ 'target' ] );
+
+        $parameters = $this->_fillCallParameters( $_config );
 
         try {
 
@@ -119,8 +106,13 @@ trait Oauth {
             return $this->result;
         }
 
-        $parameters = $this->_fillCallParameters( $_config );
-
+        $this->_setAdditionalCurlParams( array(
+                        CURLOPT_HTTPHEADER     => array(
+                                "Authorization: Bearer " . $this->token, "Content-Type: text/plain"
+                        ),
+                        CURLOPT_SSL_VERIFYPEER => false,
+                )
+        );
 
         $this->call( "translate_relative_url", $parameters );
 

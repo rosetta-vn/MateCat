@@ -15,14 +15,12 @@ class ChunkAnalyze extends React.Component {
 
     getFiles() {
         let self = this;
-        var array = [];
-        this.props.files.forEach(function (file, i) {
-            array.push(<ChunkAnalyzeFile key={i}
+        return this.props.files.map(function (file, i) {
+            return <ChunkAnalyzeFile key={i}
                                      file={file}
                                      fileInfo={self.props.chunkInfo.files[i]}
-                                     />);
+                                     />
         });
-        return array
     }
 
     showFiles(e) {

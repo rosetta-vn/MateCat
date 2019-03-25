@@ -181,7 +181,7 @@ let ManageActions = {
                         title: 'Assignee changed',
                         text: 'The project ' + project.get('name') + ' has been assigned to ' + name,
                         type: 'success',
-                        position: 'bl',
+                        position: 'tc',
                         allowHtml: true,
                         timer: 3000
                     };
@@ -196,7 +196,7 @@ let ManageActions = {
                     });
                 });
             }
-        ).fail(function (response) {
+        ).error(function (response) {
             console.log("Error change assignee", response);
             UI.showNotificationProjectsChanged();
             UI.reloadProjects();
@@ -258,7 +258,7 @@ let ManageActions = {
                     title: 'Project Moved',
                     text: 'The project ' + project.get('name') + ' has been moved to the ' + team.name + ' Team',
                     type: 'success',
-                    position: 'bl',
+                    position: 'tc',
                     allowHtml: true,
                     timer: 3000
                 };
@@ -288,7 +288,7 @@ let ManageActions = {
             //     });
             // }
 
-        }).fail(function (response) {
+        }).error(function (response) {
             console.log("Error change assignee", response);
             UI.showNotificationProjectsChanged();
             UI.reloadProjects();
@@ -385,7 +385,7 @@ let ManageActions = {
                 AppDispatcher.dispatch({
                     actionType: ManageConstants.RENDER_PROJECTS,
                     projects: response.data,
-                    team: UI.selectedTeam,
+                    team: team,
                     hideSpinner: false,
                     filtering: false
                 });

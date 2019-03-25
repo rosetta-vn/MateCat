@@ -59,7 +59,8 @@
                 '<a class="tooltip-error-category">xxxx</a> </div>',
         lxqTooltipSuggestionBody: ''+
             '<div class="tooltip-error-container lxq-suggestion"> '+
-                '<a class="tooltip-error-category">xxxx</a> </div>'
+                '<a class="tooltip-error-category">xxxx</a> </div>',
+
     };
 
     $.extend(LXQ.const, {

@@ -35,8 +35,8 @@
             return this.el.hasClass('readonly');
         }
 
-        this.isICELocked = function() {
-            return this.el.hasClass('ice-locked');
+        this.isIceMatch = function() {
+            return this.el.hasClass('ice-locked') || this.el.hasClass('ice-unlocked');
         }
     }
 

@@ -22,13 +22,8 @@ class GlossaryModel {
 
     private $uid ;
 
-    private $featureSet;
-
     public function __construct( Jobs_JobStruct $job ) {
         $this->job = $job ;
-
-        $this->featureSet = new FeatureSet;
-        $this->featureSet->loadForProject( $this->job->getProject() );
 
         $this->_TMS = Engine::getInstance( self::MYMEMORY_ID );
 
@@ -45,8 +40,7 @@ class GlossaryModel {
 
     private function __matchWithWordBoundary( $what, $where ) {
         $quoted = preg_quote( $what );
-        $preg_match_pattern =  $this->featureSet->filter('glossaryMatchPattern', "/\\b$quoted\\b/u");
-        return preg_match_all($preg_match_pattern, $where ) ;
+        return preg_match_all("/\\b$quoted\\b/u", $where ) ;
     }
 
     /**
@@ -72,10 +66,7 @@ class GlossaryModel {
     }
 
     public function get($segment, $translation) {
-
-        $Filter = \SubFiltering\Filter::getInstance( $this->featureSet );
-
-        $config[ 'segment' ] = $Filter->fromLayer2ToLayer0( preg_replace( '#<(?:/?[^>]+/?)>#', "", $segment ) );
+        $config[ 'segment' ] = CatUtils::view2rawxliff( preg_replace( '#<(?:/?[^>]+/?)>#', "", $segment ) );
         $config[ 'translation' ] = $translation ;
 
         $config[ 'source' ]      = $this->job->source ;

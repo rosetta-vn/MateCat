@@ -13,9 +13,7 @@ class SegmentFixedButton extends React.Component{
                 <a className="button button-fixed status-fixed"
                    onClick={this.handleClick.bind(this)}
                    href="javascript:;"
-                   disabled={this.props.disabled}
-                   draggable="false"
-                >
+                   disabled={this.props.disabled} >
                     FIXED
                 </a>
                 <p>{window.UI.shortcutLeader}+ENTER</p>

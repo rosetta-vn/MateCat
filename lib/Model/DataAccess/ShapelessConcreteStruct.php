@@ -9,33 +9,14 @@
 
 namespace DataAccess;
 
-use ArrayAccess;
-use DataAccess_AbstractDaoObjectStruct;
 
-class ShapelessConcreteStruct extends DataAccess_AbstractDaoObjectStruct implements ArrayAccess {
+use DataAccess_AbstractDaoSilentStruct;
+use DataAccess_IDaoStruct;
 
-    use ArrayAccessTrait;
-
-    protected function tryValidator() {}
+class ShapelessConcreteStruct extends DataAccess_AbstractDaoSilentStruct implements DataAccess_IDaoStruct {
 
     public function __set( $name, $value ) {
         $this->$name = $value;
-    }
-
-    /**
-     * @param $name
-     *
-     * @return mixed
-     */
-    public function __get( $name ) {
-        if ( !property_exists( $this, $name ) ) {
-            return null;
-        }
-        return $this->$name;
-    }
-
-    public function getArrayCopy() {
-        return (array)$this;
     }
 
 }

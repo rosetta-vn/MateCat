@@ -2,7 +2,7 @@
 if ( SegmentFilter.enabled() )
 (function($, UI, SF, undefined) {
 
-    var original_renderFiles = UI.renderFiles ;
+    var original_getSegmentsMarkup = UI.getSegmentMarkup ;
     var original_editAreaClick     = UI.editAreaClick ;
 
     var original_selectorForNextUntranslatedSegment = UI.selectorForNextUntranslatedSegment ; 
@@ -11,6 +11,20 @@ if ( SegmentFilter.enabled() )
     var original_gotoPreviousSegment = UI.gotoPreviousSegment ;
 
     var original_openNextTranslated = UI.openNextTranslated ;
+
+    var gotoPreviousSegment = function() {
+        var list = SegmentFilter.getLastFilterData()['segment_ids'] ;
+        var index = list.indexOf('' + UI.currentSegmentId);
+        var nextFiltered = list[ index - 1 ];
+
+        if ( nextFiltered && UI.Segment.findEl( nextFiltered ).length ) {
+            original_gotoPreviousSegment.apply(undefined, arguments);
+        } else if ( nextFiltered ) {
+            UI.render({ segmentToOpen: nextFiltered });
+        } else {
+            // in this case there is no previous, do nothing, remain on the current segment.
+        }
+    };
 
     /**
      * This function handles the movement to the next segment when filter is open. This is a natural operation
@@ -23,7 +37,7 @@ if ( SegmentFilter.enabled() )
     var gotoNextSegment = function() {
         var list = SegmentFilter.getLastFilterData()['segment_ids'] ;
         var index = list.indexOf( '' + UI.currentSegmentId );
-        var nextFiltered = ( index !== list.length - 1 ) ? list[ index + 1 ] : list[0];
+        var nextFiltered = list[ index + 1 ];
         var maxReached = UI.maxNumSegmentsReached() ;
 
         if ( !nextFiltered ) {
@@ -34,32 +48,7 @@ if ( SegmentFilter.enabled() )
             UI.unmountSegments() ;
         }
 
-        if ( UI.Segment.findEl( nextFiltered ).length && index !== list.length - 1) {
-            original_gotoNextSegment.apply(undefined, arguments);
-        } else if (UI.Segment.findEl( nextFiltered ).length && index === 0) {
-            original_gotoPreviousSegment.apply(undefined, arguments);
-        } else if ( nextFiltered ) {
-            UI.render({ segmentToOpen: nextFiltered });
-        }
-    };
-
-    var gotoPreviousSegment = function() {
-        var list = SegmentFilter.getLastFilterData()['segment_ids'] ;
-        var index = list.indexOf( '' + UI.currentSegmentId );
-        var nextFiltered = (index !== 0 ) ? list[ index - 1 ] : list[list.length - 1 ];
-        var maxReached = UI.maxNumSegmentsReached() ;
-
-        if ( !nextFiltered ) {
-            return ;
-        }
-
-        if ( maxReached ) {
-            UI.unmountSegments() ;
-        }
-
-        if ( UI.Segment.findEl( nextFiltered ).length && index !== 0 ) {
-            original_gotoPreviousSegment.apply(undefined, arguments);
-        } else if (UI.Segment.findEl( nextFiltered ).length && index === 0) {
+        if ( UI.Segment.findEl( nextFiltered ).length ) {
             original_gotoNextSegment.apply(undefined, arguments);
         } else if ( nextFiltered ) {
             UI.render({ segmentToOpen: nextFiltered });
@@ -72,27 +61,26 @@ if ( SegmentFilter.enabled() )
             // change this if we are filtering, go to the next
             // segment, assuming the sample is what we want to revise.
             if ( SF.filtering() ) {
-                gotoNextSegment.apply(this, arguments);
+                gotoNextSegment.apply(undefined, arguments);
             }
             else {
-                original_openNextTranslated.apply(this, arguments);
+                original_openNextTranslated.apply(undefined, arguments);
             }
         },
-
         gotoPreviousSegment : function() {
             if ( SF.filtering() ) {
-                gotoPreviousSegment.apply(this, arguments);
+                gotoPreviousSegment.apply(undefined, arguments);
             } else {
-                original_gotoPreviousSegment.apply(this, arguments);
+                original_gotoPreviousSegment.apply(undefined, arguments);
             }
 
         },
 
         gotoNextSegment : function() {
             if ( SF.filtering() ) {
-                gotoNextSegment.apply(this, arguments);
+                gotoNextSegment.apply(undefined, arguments);
             } else {
-                original_gotoNextSegment.apply(this, arguments);
+                original_gotoNextSegment.apply(undefined, arguments);
             }
 
         },
@@ -116,27 +104,25 @@ if ( SegmentFilter.enabled() )
             return  $(el).closest('section').hasClass('muted');
         },
 
-        editAreaClick : function(target, operation) {
+        editAreaClick : function(e, operation, action) {
             var e = arguments[0];
-            if ( ! UI.isMuted(target) ) {
-                original_editAreaClick.apply( this,[target, operation]);
+            if ( ! UI.isMuted(e.target) ) {
+                original_editAreaClick.apply( $(e.target).closest('.editarea'), arguments );
             }
         },
 
-        renderFiles : function() {
-            original_renderFiles.apply( this, arguments );
+        getSegmentMarkup : function() {
+            var markup = original_getSegmentsMarkup.apply( undefined, arguments );
+            var segment = arguments[0];
 
             if (SF.filtering()) {
-                // var segments = SegmentStore.getAllSegments();
-                var filterArray = SF.getLastFilterData()['segment_ids'];
-                SegmentActions.setMutedSegments(filterArray);
-                // segments.forEach(function (segment,index) {
-                //     if (filterArray.indexOf(segment.sid) === -1) {
-                //         SegmentActions.addClassToSegment(segment.sid, 'muted');
-                //         SegmentActions.removeClassToSegment(segment.sid, 'editor opened');
-                //     }
-                // })
+                if ( SF.getLastFilterData()['segment_ids'].indexOf( segment.sid ) === -1 ) {
+                    markup = $(markup).addClass('muted');
+                    markup = $('<div/>').append(markup).html();
+                }
             }
+
+            return markup ;
         }
     });
 })(jQuery, UI, SegmentFilter);

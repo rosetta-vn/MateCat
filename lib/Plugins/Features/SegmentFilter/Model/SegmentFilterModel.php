@@ -8,6 +8,8 @@
 
 namespace Features\SegmentFilter\Model;
 
+use Features\SegmentFilter\Model\SegmentFilterDao ;
+
 class SegmentFilterModel {
 
     /**
@@ -20,25 +22,24 @@ class SegmentFilterModel {
     private $filter;
 
     public function __construct( \Chunks_ChunkStruct $chunk, FilterDefinition $filter ) {
-        $this->chunk  = $chunk;
-        $this->filter = $filter;
-        $this->chunk->getProject()->getFeatures()->filter('filterSegmentFilter', $filter, $chunk) ;
+        $this->chunk = $chunk;
+        $this->filter = $filter ;
+
     }
 
     /**
      * @return null|\Translations_SegmentTranslationStruct[]
-     * @throws \Exception
      */
-    public function getSegmentList() {
+    public function getSegmentIds() {
         $result = null;
 
         if ( $this->filter->isSampled() ) {
-            $result = SegmentFilterDao::findSegmentIdsForSample( $this->chunk, $this->filter );
-        } else {
-            $result = SegmentFilterDao::findSegmentIdsBySimpleFilter( $this->chunk, $this->filter );
+            $result = SegmentFilterDao::findSegmentIdsForSample($this->chunk, $this->filter);
         }
-
-        return $result;
+        else {
+            $result = SegmentFilterDao::findSegmentIdsBySimpleFilter($this->chunk, $this->filter);
+        }
+        return $result ;
     }
 
 }

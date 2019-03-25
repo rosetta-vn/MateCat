@@ -42,7 +42,7 @@ class getVolumeAnalysisController extends ajaxController {
             return -1;
         }
 
-        $analysisStatus = new Analysis_WEBStatus( $_project_data, $this->featureSet );
+        $analysisStatus = new Analysis_WEBStatus( $_project_data );
         $this->result = $analysisStatus->fetchData()->getResult();
 
     }

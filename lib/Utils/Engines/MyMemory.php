@@ -55,32 +55,29 @@ class Engines_MyMemory extends Engines_AbstractEngine {
         $result_object = null;
 
         switch ( $functionName ) {
-            case 'tags_projection' :
-                $result_object = Engines_Results_MyMemory_TagProjectionResponse::getInstance( $decoded, $this->featureSet );
-                break;
             case 'api_key_check_auth_url':
-                $result_object = Engines_Results_MyMemory_AuthKeyResponse::getInstance( $decoded, $this->featureSet );
+                $result_object = Engines_Results_MyMemory_AuthKeyResponse::getInstance( $decoded );
                 break;
             case 'api_key_create_user_url':
-                $result_object = Engines_Results_MyMemory_CreateUserResponse::getInstance( $decoded, $this->featureSet );
+                $result_object = Engines_Results_MyMemory_CreateUserResponse::getInstance( $decoded );
                 break;
             case 'glossary_import_relative_url':
             case 'tmx_import_relative_url':
             case 'tmx_status_relative_url':
-                $result_object = Engines_Results_MyMemory_TmxResponse::getInstance( $decoded, $this->featureSet );
+                $result_object = Engines_Results_MyMemory_TmxResponse::getInstance( $decoded );
                 break;
             case 'tmx_export_create_url' :
             case 'tmx_export_check_url' :
             case 'tmx_export_email_url' :
             case 'glossary_export_relative_url' :
-                $result_object = Engines_Results_MyMemory_ExportResponse::getInstance( $decoded, $this->featureSet );
+                $result_object = Engines_Results_MyMemory_ExportResponse::getInstance( $decoded );
                 break;
             case 'analyze_url':
-                $result_object = Engines_Results_MyMemory_AnalyzeResponse::getInstance( $decoded, $this->featureSet );
+                $result_object = Engines_Results_MyMemory_AnalyzeResponse::getInstance( $decoded );
                 break;
             case 'contribute_relative_url':
             case 'update_relative_url':
-                $result_object = Engines_Results_MyMemory_SetContributionResponse::getInstance( $decoded, $this->featureSet );
+                $result_object = Engines_Results_MyMemory_SetContributionResponse::getInstance( $decoded );
                 break;
             default:
 
@@ -91,7 +88,7 @@ class Engines_MyMemory extends Engines_AbstractEngine {
                     }
                 }
 
-                $result_object = Engines_Results_MyMemory_TMS::getInstance( $decoded, $this->featureSet );
+                $result_object = Engines_Results_MyMemory_TMS::getInstance( $decoded );
                 break;
         }
 
@@ -132,11 +129,8 @@ class Engines_MyMemory extends Engines_AbstractEngine {
      * @param $_config
      *
      * @return array
-     * @throws \Exceptions\NotFoundException
-     * @throws \API\V2\Exceptions\AuthenticationError
+     * @throws Exceptions_RecordNotFound
      * @throws \Exceptions\ValidationError
-     * @throws \TaskRunner\Exceptions\EndQueueException
-     * @throws \TaskRunner\Exceptions\ReQueueException
      */
     public function get( $_config ) {
 
@@ -172,7 +166,7 @@ class Engines_MyMemory extends Engines_AbstractEngine {
         ( !$_config[ 'isGlossary' ] ? $function = "translate_relative_url" : $function = "gloss_get_relative_url" );
 
 
-        $parameters = $this->featureSet->filter( 'filterMyMemoryGetParameters', $parameters, $_config );
+        $parameters = $this->featureSet->filter( 'filterMyMemoryGetParameters', $parameters );
         $this->call( $function, $parameters, true );
 
         if ( isset( $segment_file_chr[ 1 ] ) ) {
@@ -198,10 +192,12 @@ class Engines_MyMemory extends Engines_AbstractEngine {
         $parameters[ 'langpair' ] = $_config[ 'source' ] . "|" . $_config[ 'target' ];
         $parameters[ 'de' ]       = $_config[ 'email' ];
         $parameters[ 'prop' ]     = $_config[ 'prop' ];
+
         if ( !empty( $_config[ 'context_after' ] ) || !empty( $_config[ 'context_before' ] ) ) {
-            $parameters[ 'context_after' ]  = ltrim( @$_config[ 'context_after' ], "@-" );
-            $parameters[ 'context_before' ] = ltrim( @$_config[ 'context_before' ], "@-" );
+            $parameters[ 'context_after' ]  = ltrim( $_config[ 'context_after' ], "@-" );
+            $parameters[ 'context_before' ] = ltrim( $_config[ 'context_before' ], "@-" );
         }
+
         if ( !empty( $_config[ 'id_user' ] ) ) {
             if ( !is_array( $_config[ 'id_user' ] ) ) {
                 $_config[ 'id_user' ] = [ $_config[ 'id_user' ] ];
@@ -229,11 +225,10 @@ class Engines_MyMemory extends Engines_AbstractEngine {
         $parameters[ 'newseg' ]         = $_config[ 'newsegment' ];
         $parameters[ 'newtra' ]         = $_config[ 'newtranslation' ];
         $parameters[ 'langpair' ]       = $_config[ 'source' ] . "|" . $_config[ 'target' ];
-        $parameters[ 'de' ]             = $_config[ 'email' ];
 
-        if ( !empty( $_config[ 'context_after' ] ) || !empty( $_config[ 'context_before' ] ) ) {
-            $parameters[ 'context_after' ]  = @$_config[ 'context_after' ];
-            $parameters[ 'context_before' ] = @$_config[ 'context_before' ];
+        if( !empty( $_config[ 'context_after' ] ) || !empty( $_config[ 'context_before' ] ) ){
+            $parameters[ 'context_after' ]  = $_config[ 'context_after' ];
+            $parameters[ 'context_before' ] = $_config[ 'context_before' ];
         }
 
         if ( !empty( $_config[ 'id_user' ] ) ) {
@@ -265,7 +260,6 @@ class Engines_MyMemory extends Engines_AbstractEngine {
         $parameters[ 'tra' ]      = $_config[ 'translation' ];
         $parameters[ 'langpair' ] = $_config[ 'source' ] . "|" . $_config[ 'target' ];
         $parameters[ 'de' ]       = $_config[ 'email' ];
-        $parameters[ 'id' ]       = $_config[ 'id_match' ];
 
         if ( !empty( $_config[ 'id_user' ] ) ) {
             if ( !is_array( $_config[ 'id_user' ] ) ) {
@@ -276,7 +270,7 @@ class Engines_MyMemory extends Engines_AbstractEngine {
 
         ( !$_config[ 'isGlossary' ] ? $function = "delete_relative_url" : $function = "gloss_delete_relative_url" );
 
-        $this->call( $function, $parameters, true );
+        $this->call( $function, $parameters );
 
         /*
          * If the segment to be deleted is not present in the current TM,
@@ -312,7 +306,7 @@ class Engines_MyMemory extends Engines_AbstractEngine {
         $parameters[ 'newseg' ]   = $_config[ 'newsegment' ];
         $parameters[ 'newtra' ]   = $_config[ 'newtranslation' ];
         $parameters[ 'langpair' ] = $_config[ 'source' ] . "|" . $_config[ 'target' ];
-        $parameters[ 'snote' ]    = $_config[ 'tnote' ];
+        $parameters[ 'tnote' ]    = $_config[ 'tnote' ];
         $parameters[ 'prop' ]     = $_config[ 'prop' ];
 
         if ( !empty( $_config[ 'id_user' ] ) ) {
@@ -427,26 +421,24 @@ class Engines_MyMemory extends Engines_AbstractEngine {
 
     public function import( $file, $key, $name = false ) {
 
-        if ( version_compare( PHP_VERSION, '5.5.0' ) >= 0 && class_exists( '\\CURLFile' ) ) {
+        $postFields = array(
+                'tmx'  => "@" . realpath( $file ),
+                'name' => $name
+        );
 
+        $postFields[ 'key' ] = trim( $key );
+
+
+        if ( version_compare(PHP_VERSION, '5.5.0') >= 0 ) {
             /**
              * Added in PHP 5.5.0 with FALSE as the default value.
              * PHP 5.6.0 changes the default value to TRUE.
              */
-            $options[ CURLOPT_SAFE_UPLOAD ] = true;
+            $options[CURLOPT_SAFE_UPLOAD] = false;
             $this->_setAdditionalCurlParams($options);
-            $file = new \CURLFile( realpath( $file ) );
-
-        } else{
-            $file = "@" . realpath( $file );
         }
 
-        $postFields = array(
-                'tmx'  => $file,
-                'name' => $name,
-                'key'  => trim( $key )
-        );
-
+        
         $this->call( "tmx_import_relative_url", $postFields, true );
 
         return $this->result;
@@ -481,8 +473,6 @@ class Engines_MyMemory extends Engines_AbstractEngine {
      * @param null|string  $source
      * @param null|string  $target
      * @param null|boolean $strict
-     *
-     * @return array
      */
     public function createExport( $key, $source = null, $target = null, $strict = null ) {
 
@@ -808,30 +798,6 @@ class Engines_MyMemory extends Engines_AbstractEngine {
         Log::doLog( "DETECT LANG RES:", $res );
 
         return json_decode( $res[ $tokenHash ], true );
-    }
-
-
-    /**
-     * MyMemory private endpoint
-     *
-     * @param $config
-     *
-     * @return array|Engines_Results_MyMemory_TagProjectionResponse
-     */
-    public function getTagProjection( $config ){
-
-        $parameters           = array();
-        $parameters[ 's' ]    = $config[ 'source' ];
-        $parameters[ 't' ]    = $config[ 'target' ];
-        $parameters[ 'hint' ] = $config[ 'suggestion' ];
-
-        $this->engineRecord->base_url .= ':10000';
-        $this->engineRecord->others[ 'tags_projection' ] .= '/' . $config[ 'source_lang' ] . "/" . $config[ 'target_lang' ] . "/";
-
-        $this->call( 'tags_projection', $parameters );
-
-        return $this->result;
-
     }
 
 }

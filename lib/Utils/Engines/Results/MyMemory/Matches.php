@@ -1,7 +1,5 @@
 <?php
 
-use SubFiltering\Filter;
-
 class Engines_Results_MyMemory_Matches {
 
     public $id;
@@ -23,14 +21,6 @@ class Engines_Results_MyMemory_Matches {
     public $prop;
     public $memory_key;
     public $ICE;
-    public $tm_properties;
-    public $source_note;
-
-    /**
-     * @var FeatureSet
-     */
-    protected $featureSet;
-    protected $_args;
 
     public function __construct() {
 
@@ -41,30 +31,10 @@ class Engines_Results_MyMemory_Matches {
             throw new Exception( "No args defined for " . __CLASS__ . " constructor" );
         }
 
-        if ( count( $args ) > 1 and is_array( $args[ 0 ] ) ) {
-            throw new Exception( "Invalid arg 1 " . __CLASS__ . " constructor" );
-        }
+        $match = array();
+        if ( count( $args ) == 1 and is_array( $args[ 0 ] ) ) {
 
-        $this->_args = $args;
-
-    }
-
-    public function featureSet( FeatureSet $featureSet = null ){
-       $this->featureSet = $featureSet;
-    }
-
-    /**
-     * @param int $layerNum
-     *
-     * @return array
-     * @throws Exception
-     */
-    public function getMatches( $layerNum = 2 ) {
-
-        $match = [];
-        if ( count( $this->_args ) == 1 and is_array( $this->_args[ 0 ] ) ) {
-
-            $match = $this->_args[ 0 ];
+            $match = $args[ 0 ];
             if ( $match[ 'last-update-date' ] == "0000-00-00 00:00:00" ) {
                 $match[ 'last-update-date' ] = "0000-00-00";
             }
@@ -79,24 +49,23 @@ class Engines_Results_MyMemory_Matches {
             $match[ 'match' ] = $match[ 'match' ] * 100;
             $match[ 'match' ] = $match[ 'match' ] . "%";
 
-            ( isset( $match[ 'prop' ] ) ? $match[ 'prop' ] = json_decode( $match[ 'prop' ] ) : $match[ 'prop' ] = [] );
+            ( isset( $match[ 'prop' ] ) ? $match[ 'prop' ] = json_decode( $match[ 'prop' ] ) : $match[ 'prop' ] = array() );
 
-            /* MyMemory Match */
-            $match[ 'raw_segment' ]     = $match[ 'segment' ];
-            $match[ 'segment' ]         = $this->getLayer( $match[ 'segment' ], $layerNum );
-            $match[ 'raw_translation' ] = $match[ 'translation' ];
-            $match[ 'translation' ]     = $this->getLayer( $match[ 'translation' ], $layerNum );
+        }
 
-        } elseif( count( $this->_args ) >= 5 and !is_array( $this->_args[ 0 ] ) ) {
-            $match[ 'segment' ]          = $this->getLayer( $this->_args[ 0 ], $layerNum );
-            $match[ 'raw_segment' ]      = $this->_args[ 0 ];
-            $match[ 'translation' ]      = $this->getLayer( $this->_args[ 1 ], $layerNum );
-            $match[ 'raw_translation' ]  = $this->_args[ 1 ];
-            $match[ 'match' ]            = $this->_args[ 2 ];
-            $match[ 'created-by' ]       = $this->_args[ 3 ];
-            $match[ 'create-date' ]      = $this->_args[ 4 ];
-            $match[ 'last-update-date' ] = $this->_args[ 4 ];
-            $match[ 'prop' ]             = ( isset( $this->_args[ 5 ] ) ? $this->_args[ 5 ] : [] );
+        if ( count( $args ) > 1 and is_array( $args[ 0 ] ) ) {
+            throw new Exception( "Invalid arg 1 " . __CLASS__ . " constructor" );
+        }
+
+        if ( count( $args ) == 5 and !is_array( $args[ 0 ] ) ) {
+            $match[ 'segment' ]          = CatUtils::rawxliff2view( $args[ 0 ] );
+            $match[ 'raw_segment' ]      = $args[ 0 ];
+            $match[ 'translation' ]      = CatUtils::rawxliff2view( $args[ 1 ] );
+            $match[ 'raw_translation' ]  = $args[ 1 ];
+            $match[ 'match' ]            = $args[ 2 ];
+            $match[ 'created-by' ]       = $args[ 3 ];
+            $match[ 'last-update-date' ] = $args[ 4 ];
+            $match[ 'prop' ]             = ( isset( $args[ 5 ] ) ? $args[ 5 ] : array() );
         }
 
         $this->id               = array_key_exists( 'id', $match ) ? $match[ 'id' ] : '0';
@@ -117,57 +86,13 @@ class Engines_Results_MyMemory_Matches {
         $this->match            = array_key_exists( 'match', $match ) ? $match[ 'match' ] : 0;
         $this->memory_key       = array_key_exists( 'key', $match ) ? $match[ 'key' ] : '';
         $this->ICE              = array_key_exists( 'ICE', $match ) ? (bool)$match[ 'ICE' ] : false;
-        $this->tm_properties    = array_key_exists( 'tm_properties', $match ) ? json_decode( $match[ 'tm_properties' ], true ) : [];
 
-        $this->prop = $match[ 'prop' ];
+        $this->prop             = $match[ 'prop' ];
 
-        return $this->toArray();
     }
 
-    /**
-     * @param $string
-     * @param $layerNum
-     *
-     * @return mixed
-     * @throws Exception
-     */
-    protected function getLayer( $string, $layerNum ){
-
-        $filter = Filter::getInstance( $this->featureSet );
-        switch( $layerNum ){
-            case 0:
-                return $filter->fromLayer1ToLayer0( $string );
-                break;
-            case 1:
-                return $string;
-                break;
-            case 2:
-                return $filter->fromLayer1ToLayer2( $string );
-                break;
-        }
-    }
-
-    /**
-     * Returns an array of the public attributes of the struct.
-     * If $mask is provided, the resulting array will include
-     * only the specified keys.
-     *
-     * This method is useful in conjunction with PDO execute, where only
-     * a subset of the attributes may be required to be bound to the query.
-     *
-     * @return array
-     *
-     */
-    protected function toArray(){
-
-        $attributes = array();
-        $reflectionClass = new ReflectionObject( $this );
-        $publicProperties = $reflectionClass->getProperties( ReflectionProperty::IS_PUBLIC ) ;
-        foreach( $publicProperties as $property ) {
-            $attributes[ $property->getName() ] = $property->getValue( $this );
-        }
-        return $attributes;
-
+    public function get_as_array() {
+        return ((array) $this);
     }
 
 }

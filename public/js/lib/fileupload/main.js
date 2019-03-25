@@ -30,7 +30,7 @@ UI = {
         if (this.initTM) {
             this.initTM();
         }
-        if ( Cookies.get( 'tmpanel-open' ) == '1' ) UI.openLanguageResourcesPanel();
+        if ( $.cookie( 'tmpanel-open' ) == '1' ) UI.openLanguageResourcesPanel();
     },
     getPrintableFileSize: function ( filesizeInBytes ) {
 
@@ -169,9 +169,7 @@ UI = {
         if ( $(".mgmt-tm .new .privatekey .btn-ok").hasClass( 'disabled' ) ) return false; //ajax call already running
         if( $( '.mgmt-panel #activetm tbody tr.mine' ).length && $( '.mgmt-panel #activetm tbody tr.mine .update input' ).is(":checked")) return false; //a key is already selected in TMKey management panel
 
-        APP.createTMKey().done(function (  ) {
-            UI.checkTMKeysUpdateChecks();
-        });
+        APP.createTMKey();
         var textToDisplay = '<span>A new resource has been generated for the TMX you uploaded. You can manage your resources in the  <a href="#" class="translation-memory-option-panel">Settings panel</a>.</span>';
         if (extension && extension === "g") {
             textToDisplay = '<span>A new resource has been generated for the glossary you uploaded. You can manage your resources in the  <a href="#" class="translation-memory-option-panel">Settings panel</a>.</span>';
@@ -182,7 +180,6 @@ UI = {
         $('.warning-message .translation-memory-option-panel').off('click').on('click', function() {
             APP.openOptionsPanel("tm");
         } );
-
     },
 
     checkFailedConversionsNumber: function () {
@@ -579,7 +576,7 @@ convertFile = function ( fname, filerow, filesize, enforceConversion ) {
     filerow.removeClass( 'ready' ).addClass( 'converting' ).data( 'session', session );
 
     var request = $.ajax( {
-        url: 'action/convertFile/',
+        url: '?action=convertFile',
         data: {
             action: 'convertFile',
             file_name: fname,
@@ -653,11 +650,11 @@ convertFile = function ( fname, filerow, filesize, enforceConversion ) {
                         $( rowClone ).find( '.name' ).first()
                                 .data( "zipfile", zipFile )
                                 .attr( "data-zipfile", zipFile )
-                                .html( "<i class='icon-make-group icon'/>" + "<span class=\"zip_internal_file\">" + file['name'].replace(/&/g,"&amp;") + "</span>" );
+                                .html( "<span class=\"zip_internal_file\">" + file['name'].replace(/&/g,"&amp;") + "</span>" );
 
                         $( rowClone ).find( '.size' ).first().html( UI.getPrintableFileSize( file['size'] ) );
 
-                        var oldDataUrl = $( 'button[data-url]', rowClone ).data( "url" );
+                        var oldDataUrl = $( 'button[role="button"]', rowClone ).data( "url" );
 
                         var newExtClass = getIconClass( fileExt );
                         $( rowClone ).find( '.preview span' ).first().attr( "class", newExtClass );
@@ -667,7 +664,7 @@ convertFile = function ( fname, filerow, filesize, enforceConversion ) {
 
                         var newDataUrl = oldDataUrl.replace( /file=[^&]+/g, "file=" + encodeURI( file['name'] ) );
 
-                        $( 'button[data-url]', rowClone )
+                        $( 'button[role="button"]', rowClone )
                                 .data( "url", newDataUrl )
                                 .attr( "data-url", newDataUrl )
                                 .removeClass( 'zip_row' );
@@ -705,7 +702,7 @@ convertFile = function ( fname, filerow, filesize, enforceConversion ) {
 
                         $( filerow ).after( rowClone );
 
-                        $( 'button[data-url]', filerow ).addClass( "zip_row" );
+                        $( 'button[role="button"]', filerow ).addClass( "zip_row" );
 
 
                     } );
@@ -805,9 +802,9 @@ checkInit = function () {
 
 checkAnalyzability = function ( who ) {
 
-    if ( $( '.upload-table tr:not(.failed)' ).length || $( '.gdrive-upload-table tr:not(.failed)' ).length) {
+    if ( $( '.upload-table tr:not(.failed)' ).length ) {
         var res = true;
-        $( '.upload-table tr:not(.failed), .gdrive-upload-table tr:not(.failed)' ).each( function () {
+        $( '.upload-table tr:not(.failed)' ).each( function () {
             if ( $( this ).hasClass( 'converting' ) ) {
                 res = false;
             }
@@ -820,9 +817,10 @@ checkAnalyzability = function ( who ) {
             }
 
         } );
-        if ( !$( '.upload-table tr:not(.failed, .tmx), .gdrive-upload-table tr:not(.failed)' ).length ) {
+        if ( !$( '.upload-table tr:not(.failed, .tmx)' ).length ) {
             return false;
         }
+        if ( $( '.upload-table tr.failed' ).length ) res = false;
         if ( UI.uploadingTMX() ) {
             res = false;
         }

@@ -1,5 +1,5 @@
 <?php
-use Exceptions\NotFoundException;
+use Exceptions\NotFoundError;
 use Teams\MembershipDao;
 use Teams\MembershipStruct;
 use \API\V2\Json\Error;
@@ -62,11 +62,16 @@ class getProjectsController extends ajaxController {
 
     private $no_assignee ;
 
+    /**
+     * @var FeatureSet
+     */
+    private $featureSet;
+
     public function __construct() {
 
         //SESSION ENABLED
         parent::__construct();
-        parent::readLoginInfo();
+        parent::checkLogin();
 
         $filterArgs = [
                 'page'          => [ 'filter' => FILTER_SANITIZE_NUMBER_INT ],
@@ -126,23 +131,24 @@ class getProjectsController extends ajaxController {
             return;
         }
 
-        $this->featureSet->loadFromUserEmail( $this->user->email ) ;
+        $this->featureSet = new FeatureSet();
+        $this->featureSet->loadFromUserEmail( $this->logged_user->email ) ;
 
         try {
             $team = $this->filterTeam();
-        } catch( NotFoundException $e ){
+        } catch( NotFoundError $e ){
             $this->result = ( new Error( [ $e ] ) )->render();
             return;
         }
 
         if( $team->type == Constants_Teams::PERSONAL ){
-            $assignee = $this->user;
+            $assignee = $this->logged_user;
             $team = null;
         } else {
             $assignee = $this->filterAssignee( $team );
         }
 
-        $projects = ManageUtils::queryProjects( $this->user, $this->start, $this->step,
+        $projects = ManageUtils::queryProjects( $this->logged_user, $this->start, $this->step,
             $this->search_in_pname,
             $this->search_source, $this->search_target, $this->search_status,
             $this->search_only_completed, $this->project_id,
@@ -150,7 +156,7 @@ class getProjectsController extends ajaxController {
             $this->no_assignee
         );
 
-        $projnum = getProjectsNumber( $this->user,
+        $projnum = getProjectsNumber( $this->logged_user,
             $this->search_in_pname, $this->search_source,
             $this->search_target, $this->search_status,
             $this->search_only_completed,
@@ -215,9 +221,9 @@ class getProjectsController extends ajaxController {
 
     private function filterTeam() {
         $dao = new MembershipDao() ;
-        $team = $dao->findTeamByIdAndUser($this->id_team, $this->user ) ;
+        $team = $dao->findTeamByIdAndUser($this->id_team, $this->logged_user ) ;
         if ( !$team ) {
-            throw  new NotFoundException( 'Team not found in user memberships', 404 ) ;
+            throw  new NotFoundError( 'Team not found in user memberships', 404 ) ;
         }
         else {
             return $team ;

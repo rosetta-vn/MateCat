@@ -1,4 +1,3 @@
-let PropTypes = require('prop-types');
 
 class SuccessModal extends React.Component {
 
@@ -15,8 +14,8 @@ class SuccessModal extends React.Component {
     }
 }
 SuccessModal.propTypes = {
-    title: PropTypes.string,
-    text: PropTypes.string
+    title: React.PropTypes.string,
+    text: React.PropTypes.string
 };
 
 

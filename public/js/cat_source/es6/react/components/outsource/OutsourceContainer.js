@@ -1,6 +1,7 @@
 let OutsourceConstants = require('../../constants/OutsourceConstants');
 let AssignToTranslator = require('./AssignToTranslator').default;
 let OutsourceVendor = require('./OutsourceVendor').default;
+let OpenJobBox = require('./OpenJobBox').default;
 let CSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 
@@ -12,7 +13,6 @@ class OutsourceContainer extends React.Component {
         this.handleDocumentClick = this.handleDocumentClick.bind(this);
         this._handleEscKey = this._handleEscKey.bind(this);
         this.checkTimezone();
-        // this.retrieveTranslators();
     }
 
     allowHTML(string) {
@@ -20,23 +20,10 @@ class OutsourceContainer extends React.Component {
     }
 
     checkTimezone() {
-        var timezoneToShow = Cookies.get( "matecat_timezone" );
+        var timezoneToShow = $.cookie( "matecat_timezone" );
         if ( !timezoneToShow) {
             timezoneToShow = -1 * ( new Date().getTimezoneOffset() / 60 );
-            Cookies.set( "matecat_timezone" , timezoneToShow);
-        }
-    }
-
-    retrieveTranslators () {
-        if (config.enable_outsource) {
-            let self = this;
-            self.translatorsNumber = null;
-            // API.OUTSOURCE.getCountTranslators(this.props.job.get('sourceTxt'), this.props.job.get('targetTxt'))
-            //     .done(function ( data ) {
-            //         self.translatorsNumber = data;
-            //     }).fail(function ( data ) {
-            //         self.translatorsNumber = null;
-            // });
+            $.cookie( "matecat_timezone" , timezoneToShow);
         }
     }
 
@@ -128,11 +115,8 @@ class OutsourceContainer extends React.Component {
                         <div className="job-payable">
                             <div><span id="words">{this.props.job.get('stats').get('TOTAL_FORMATTED')}</span> words</div>
                         </div>
-                        <div className="project-subject">
-                            <b>Subject</b>: {this.props.job.get('subject_printable')}
-                        </div>
                     </div>
-                    <div className="sixteen wide column">
+                    <div className="sixteen wide column shadow-1">
                         <div className="ui grid"
                         ref={(container) => this.container = container}>
                                 {(this.props.showTranslatorBox ) ? (
@@ -146,9 +130,7 @@ class OutsourceContainer extends React.Component {
                                 {(this.props.showOpenBox ) ? (
                                     <OpenJobBox job={this.props.job}
                                                 url={this.props.url}
-                                                project={this.props.project}
-                                                outsourceJobId={this.props.outsourceJobId}
-                                    />
+                                                project={this.props.project}/>
                                 ) : (null)}
 
                                 {( (this.props.showTranslatorBox || this.props.showOpenBox) && config.enable_outsource ) ? (
@@ -162,9 +144,7 @@ class OutsourceContainer extends React.Component {
                                     <OutsourceVendor project={this.props.project}
                                                      job={this.props.job}
                                                      extendedView={this.props.extendedView}
-                                                     standardWC={this.props.standardWC}
-                                                     translatorsNumber={this.translatorsNumber}
-                                    />
+                                                     standardWC={this.props.standardWC}/>
                                 ) :(null)}
 
                         </div>

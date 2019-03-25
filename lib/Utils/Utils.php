@@ -5,115 +5,6 @@ use TaskRunner\Commons\QueueElement;
 
 class Utils {
 
-
-    /**
-     * Check for browser support
-     *
-     * @return bool
-     */
-    public static function isSupportedWebBrowser($browser_info) {
-        $browser_name = strtolower( $browser_info[ 'name' ] );
-        $browser_platform = strtolower( $browser_info[ 'platform' ] );
-
-        foreach ( INIT::$ENABLED_BROWSERS as $enabled_browser ) {
-            if ( stripos( $browser_name, $enabled_browser ) !== false ) {
-                // Safari supported only on Mac
-                if (stripos( "apple safari", $browser_name ) === false ||
-                        (stripos( "apple safari", $browser_name ) !== false && stripos("mac", $browser_platform) !== false) )
-                    return 1;
-            }
-        }
-
-        foreach ( INIT::$UNTESTED_BROWSERS as $untested_browser ) {
-            if ( stripos( $browser_name, $untested_browser ) !== false ) {
-                return -1;
-            }
-        }
-
-        // unsupported browsers: hack for home page
-        if ($_SERVER[ 'REQUEST_URI' ]=="/") return -2;
-
-        return 0;
-    }
-
-    static public function getBrowser() {
-        $u_agent  = $_SERVER[ 'HTTP_USER_AGENT' ];
-
-        //First get the platform?
-        if ( preg_match( '/linux/i', $u_agent ) ) {
-            $platform = 'linux';
-        } elseif ( preg_match( '/macintosh|mac os x/i', $u_agent ) ) {
-            $platform = 'mac';
-        } elseif ( preg_match( '/windows|win32/i', $u_agent ) ) {
-            $platform = 'windows';
-        } else {
-            $platform = 'Unknown';
-        }
-
-        // Next get the name of the useragent yes seperately and for good reason
-        if ( preg_match( '/MSIE|Trident|Edge/i', $u_agent ) && !preg_match( '/Opera/i', $u_agent ) ) {
-            $bname = 'Internet Explorer';
-            $ub    = "MSIE";
-        } elseif ( preg_match( '/Firefox/i', $u_agent ) ) {
-            $bname = 'Mozilla Firefox';
-            $ub    = "Firefox";
-        } elseif ( preg_match( '/Chrome/i', $u_agent ) and !preg_match( '/OPR/i', $u_agent ) ) {
-            $bname = 'Google Chrome';
-            $ub    = "Chrome";
-        } elseif ( preg_match( '/Opera|OPR/i', $u_agent ) ) {
-            $bname = 'Opera';
-            $ub    = "Opera";
-        } elseif ( preg_match( '/Safari/i', $u_agent ) ) {
-            $bname = 'Apple Safari';
-            $ub    = "Safari";
-        } elseif ( preg_match( '/AppleWebKit/i', $u_agent ) ) {
-            $bname = 'Apple Safari';
-            $ub    = "Safari";
-        } elseif ( preg_match( '/Netscape/i', $u_agent ) ) {
-            $bname = 'Netscape';
-            $ub    = "Netscape";
-        } elseif ( preg_match( '/Mozilla/i', $u_agent ) ) {
-            $bname = 'Mozilla Generic';
-            $ub    = "Mozillageneric";
-        } else {
-            $bname = 'Unknown';
-            $ub    = "Unknown";
-        }
-        // finally get the correct version number
-        $known   = array( 'Version', $ub, 'other' );
-        $pattern = '#(?<browser>' . join( '|', $known ) . ')[/ ]+(?<version>[0-9.|a-zA-Z.]*)#';
-        if ( !preg_match_all( $pattern, $u_agent, $matches ) ) {
-            // we have no matching number just continue
-        }
-
-        // see how many we have
-        $i = count( $matches[ 'browser' ] );
-        if ( $i != 1 ) {
-            //we will have two since we are not using 'other' argument yet
-            //see if version is before or after the name
-            if ( strripos( $u_agent, "Version" ) < strripos( $u_agent, $ub ) ) {
-                $version = $matches[ 'version' ][ 0 ];
-            } else {
-                $version = @$matches[ 'version' ][ 1 ];
-            }
-        } else {
-            $version = $matches[ 'version' ][ 0 ];
-        }
-
-        // check if we have a number
-        if ( $version == null || $version == "" ) {
-            $version = "?";
-        }
-
-        return array(
-                'userAgent' => $u_agent,
-                'name'      => $bname,
-                'version'   => $version,
-                'platform'  => $platform,
-                'pattern'   => $pattern
-        );
-    }
-
     public static function friendly_slug($string) {
         // everything to lower and no spaces begin or end
         $string = strtolower(trim($string));
@@ -142,19 +33,16 @@ class Utils {
     }
 
     public static function getGlobalMessage() {
-        $retString = '';
         if ( file_exists( INIT::$ROOT . "/inc/.globalmessage.ini" ) ) {
             $globalMessage              = parse_ini_file( INIT::$ROOT . "/inc/.globalmessage.ini" );
-            if( ( new DateTime( $globalMessage[ 'expire' ] ) )->getTimestamp() > time() ){
-                $resObject = [
-                        'msg'    => $globalMessage[ 'message' ],
-                        'token'  => md5( $globalMessage[ 'message' ] ),
-                        'expire' => ( new DateTime( $globalMessage[ 'expire' ] ) )->format( DateTime::W3C )
-                ];
-                $retString = json_encode( [ $resObject ] );
-            }
+            return sprintf(
+                '[{"msg":"%s", "token":"%s", "expire":"%s"}]',
+                $globalMessage[ 'message' ],
+                md5( $globalMessage[ 'message' ] ),
+                ( new DateTime( $globalMessage[ 'expire' ] ) )->format( DateTime::W3C )
+            );
         }
-        return [ 'messages' => $retString ];
+        return null;
     }
 
 
@@ -172,19 +60,28 @@ class Utils {
     }
 
     public static function randomString( $maxlength = 15 ) {
+        //allowed alphabet
+        $possible = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-        $_pwd = base64_encode( md5( uniqid( '', true ) ) ); //we want more characters not only [0-9a-f]
-        $pwd  = substr( $_pwd, 0, 6 ) . substr( $_pwd, -8, 6 ); //exclude last 2 char2 because they can be == sign
+        //init counter lenght
+        $i = 0;
+        //init string
+        $salt = '';
 
-        if ( $maxlength > 15 ) {
-            while ( strlen( $pwd ) < $maxlength ) {
-                $pwd .= self::randomString();
+        //add random characters to $password until $length is reached
+        while ( $i < $maxlength ) {
+            //pick a random character from the possible ones
+            $char = substr( $possible, mt_rand( 0, $maxlength - 1 ), 1 );
+            //have we already used this character in $salt?
+            if ( !strstr( $salt, $char ) ) {
+                //no, so it's OK to add it onto the end of whatever we've already got...
+                $salt .= $char;
+                //... and increase the counter by one
+                $i++;
             }
-            $pwd = substr( $pwd, 0, $maxlength );
         }
 
-        return $pwd;
-
+        return $salt;
     }
 
 
@@ -201,8 +98,8 @@ class Utils {
         }
     }
 
-    public static function underscoreToCamelCase( $string ) {
-        return str_replace( ' ', '', ucwords( str_replace( '_', ' ', $string ) ) );
+    public static function underscoreToCamelCase($string) {
+        return str_replace(' ', '', ucwords(str_replace('_', ' ', $string)));
     }
 
 	/**
@@ -382,7 +279,7 @@ class Utils {
 
     }
 
-    public static function createToken( $namespace = '' ) {
+    public static function create_guid( $namespace = '' ) {
 
         static $guid = '';
         $uid  = uniqid( "", true );
@@ -419,38 +316,6 @@ class Utils {
         return $guid;
     }
 
-    /**
-     * @param $token
-     *
-     * @return bool
-     */
-    public static function isTokenValid( $token = null ){
-        if( empty( $token ) || !preg_match( '|^\{[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}\}$|', $token ) ){
-            return false;
-        }
-        return true;
-    }
-
-    public static function isValidFileName( $fileUpName ) {
-
-        if (
-                stripos( $fileUpName, '../' ) !== false ||
-                stripos( $fileUpName, '/../' ) !== false ||
-                stripos( $fileUpName, '/..' ) !== false ||
-                stripos( $fileUpName, '%2E%2E%2F' ) !== false ||
-                stripos( $fileUpName, '%2F%2E%2E%2F' ) !== false ||
-                stripos( $fileUpName, '%2F%2E%2E' ) !== false ||
-                stripos( $fileUpName, '.' ) === 0 ||
-                stripos( $fileUpName, '%2E' ) === 0
-        ) {
-            //Directory Traversal!
-            return false;
-        }
-
-        return true;
-
-    }
-
     public static function filterLangDetectArray( $arr ) {
         return filter_var( $arr, FILTER_SANITIZE_STRING, array( 'flags' => FILTER_FLAG_STRIP_LOW ) );
     }
@@ -483,55 +348,50 @@ class Utils {
     /**
      * Call the output in JSON format
      *
-     * @param bool $raise
-     *
-     * @throws Exception
      */
-    public static function raiseJsonExceptionError( $raise = true ) {
+    public static function raiseJsonExceptionError() {
 
         if ( function_exists( "json_last_error" ) ) {
-
-            $error = json_last_error();
-
-            switch ( $error ) {
+            switch ( json_last_error() ) {
                 case JSON_ERROR_NONE:
-                    $msg = null; # - No errors
+//              	  Log::doLog(' - No errors');
                     break;
                 case JSON_ERROR_DEPTH:
                     $msg = ' - Maximum stack depth exceeded';
+                    Log::doLog( $msg );
+                    throw new Exception( $msg, JSON_ERROR_DEPTH);
                     break;
                 case JSON_ERROR_STATE_MISMATCH:
                     $msg = ' - Underflow or the modes mismatch';
+                    Log::doLog( $msg );
+                    throw new Exception( $msg, JSON_ERROR_STATE_MISMATCH);
                     break;
                 case JSON_ERROR_CTRL_CHAR:
                     $msg =  ' - Unexpected control character found' ;
+                    Log::doLog( $msg );
+                    throw new Exception( $msg, JSON_ERROR_CTRL_CHAR);
                     break;
                 case JSON_ERROR_SYNTAX:
                     $msg = ' - Syntax error, malformed JSON' ;
+                    Log::doLog( $msg );
+                    throw new Exception( $msg, JSON_ERROR_SYNTAX);
                     break;
                 case JSON_ERROR_UTF8:
                     $msg =  ' - Malformed UTF-8 characters, possibly incorrectly encoded';
+                    Log::doLog( $msg );
+                    throw new Exception( $msg, JSON_ERROR_UTF8);
                     break;
                 default:
                     $msg =  ' - Unknown error';
+                    Log::doLog( $msg );
+                    throw new Exception( $msg, 6);
                     break;
             }
-
-            if( $raise && $error != JSON_ERROR_NONE ){
-                Log::doLog( $msg );
-                throw new Exception( $msg, $error );
-            }
-
         }
 
     }
 
-    //Array_column() is not supported on PHP 5.4, so i'll rewrite it
 	public static function array_column( array $input, $column_key, $index_key = null ) {
-
-        if ( function_exists( 'array_column' ) ) {
-            return array_column( $input, $column_key, $index_key );
-        }
 
 		$result = array();
 		foreach ( $input as $k => $v ) {
@@ -622,57 +482,55 @@ class Utils {
 		$sug_source = $match[ 'created_by' ];
 		$key        = $match[ 'memory_key' ];
 
+		//suggestion is coming from a public TM
 		if ( strtolower( $sug_source ) == 'matecat' ) {
-		    // Enter this case if created_by is matecat, we show PUBLIC_TM
+
 			$description = Constants::PUBLIC_TM ;
 
 		} elseif( !empty( $sug_source ) && stripos( $sug_source, "MyMemory" ) === false ) {
-		    // This case if for other sources from MyMemory that are public but we must
-            // show the specific name of the source.
+
 			$description = $sug_source;
 
 		} elseif ( preg_match( "/[a-f0-9]{8,}/", $key ) ) { // md5 Key
-			// This condition is for md5 keys
-            $description = self::keyNameFromUserKeyring( $uid, $key ) ;
+
+			//MyMemory returns the key of the match
+
+			if ( $uid !== null ) { //user is logged and uid is set
+
+				//check if the user can see the key.
+				$memoryKey              = new TmKeyManagement_MemoryKeyStruct();
+				$memoryKey->uid         = $uid;
+				$memoryKey->tm_key      = new TmKeyManagement_TmKeyStruct();
+				$memoryKey->tm_key->key = $key;
+
+				$memoryKeyDao         = new TmKeyManagement_MemoryKeyDao( Database::obtain() );
+				$currentUserMemoryKey = $memoryKeyDao->setCacheTTL( 3600 )->read( $memoryKey );
+
+				if ( count( $currentUserMemoryKey ) > 0 ) {
+
+					//the current user owns the key: show its description
+					$currentUserMemoryKey = $currentUserMemoryKey[ 0 ];
+					$description          = $currentUserMemoryKey->tm_key->name;
+
+				}
+
+			}
 
             if ( empty( $description ) ) {
                 $description = self::getDefaultKeyDescription( $key, $job_tm_keys );
             }
+
 		}
 
+		/**
+		 * if the description is empty, get cascading default descriptions
+		 */
 		if ( empty( $description ) ) {
-		    $description = Constants::PUBLIC_TM ;
-        }
+			$description = Constants::PUBLIC_TM ;
+		}
 
 		return $description;
 	}
-
-	public static function keyNameFromUserKeyring( $uid, $key ) {
-	    if ( $uid === null ) {
-	        return null ;
-        }
-
-        //check if the user can see the key.
-        $memoryKey              = new TmKeyManagement_MemoryKeyStruct();
-        $memoryKey->uid         = $uid;
-        $memoryKey->tm_key      = new TmKeyManagement_TmKeyStruct();
-        $memoryKey->tm_key->key = $key;
-
-        $memoryKeyDao         = new TmKeyManagement_MemoryKeyDao( Database::obtain() );
-        $currentUserMemoryKey = $memoryKeyDao->setCacheTTL( 3600 )->read( $memoryKey );
-        if ( count( $currentUserMemoryKey ) >  0 ) {
-            $currentUserMemoryKey = $currentUserMemoryKey[ 0 ];
-            $name = trim($currentUserMemoryKey->tm_key->name);
-
-            if ( empty($name) ) {
-                $name = Constants::NO_DESCRIPTION_TM ;
-            }
-
-            return $name ;
-        }
-
-        return null ;
-    }
 
     /**
      * Returns description for a key. If not found then default to "Private TM".
@@ -683,23 +541,17 @@ class Utils {
      * @return null|string
      */
 	public static function getDefaultKeyDescription( $key, $job_tm_keys ){
+		$description = Constants::PRIVATE_TM ;
+
 		$ownerKeys = TmKeyManagement_TmKeyManagement::getOwnerKeys( array( $job_tm_keys ) );
-		$description = Constants::NO_DESCRIPTION_TM ;
 
 		//search the current key
 		$currentKey = null;
 		for ( $i = 0; $i < count( $ownerKeys ); $i++ ) {
-		    $name = trim( $ownerKeys[ $i ]->name );
-
-			if ( $ownerKeys[ $i ]->key == $key && !empty($name) )  {
+			if ( $ownerKeys[ $i ]->key == $key ) {
 				$description = $ownerKeys[ $i ]->name;
 			}
-
 		}
-
-        if ( empty( $description ) ) {
-            $description = Constants::NO_DESCRIPTION_TM ;
-        }
 
 		return $description ;
 	}

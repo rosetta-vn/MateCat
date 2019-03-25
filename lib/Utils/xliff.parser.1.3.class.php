@@ -42,18 +42,9 @@
 
 class Xliff_Parser {
 
-    /**
-     * @var FeatureSet
-     */
-    protected $features;
+	private static $find_xliff_tags_reg = null;
 
-    public function __construct( FeatureSet $features = null ) {
-        $this->features = $features;
-    }
-
-    private static $find_xliff_tags_reg = null;
-
-	public function Xliff2Array($file_content) {
+	public static function Xliff2Array($file_content) {
 
 	    $xliff = [];
 
@@ -115,18 +106,10 @@ class Xliff_Parser {
 					$xliff['files'][$i]['attr']['datatype'] = "txt";
 				}
 				// Target-language
-                unset( $temp );
-                preg_match( '|target-language\s?=\s?["\'](.*?)["\']|si', $file_short, $temp );
-                if ( isset( $temp[ 1 ] ) ) {
-                    $xliff[ 'files' ][ $i ][ 'attr' ][ 'target-language' ] = $temp[ 1 ];
-                }
-
-                //Custom MateCat x-Attribute
-                unset( $temp );
-                preg_match( '|x-(.*?)=\s?["\'](.*?)["\']|si', $file_short, $temp );
-                if ( isset( $temp[ 1 ] ) ) {
-                    $xliff[ 'files' ][ $i ][ 'attr' ][ 'custom' ][ $temp[ 1 ] ] = $temp[ 2 ];
-                }
+				unset($temp);
+				preg_match('|target-language\s?=\s?["\'](.*?)["\']|si', $file_short, $temp);
+				if (isset($temp[1]))
+					$xliff['files'][$i]['attr']['target-language'] = $temp[1];
 
                 /*
                  * PHP 5.2 BUG/INCONSISTENCY vs PHP > 5.2 IN preg_match_all
@@ -169,15 +152,15 @@ class Xliff_Parser {
 						// Getting Trans-unit attributes
 						// ID
                         unset( $temp );
-                        preg_match( '|id\s?=\s?(["\'])(.*?)\1|si', $trans_unit, $temp );
+                        preg_match( '|id\s?=\s?["\'](.*?)["\']|si', $trans_unit, $temp );
 
-                        if ( trim( $temp[ 2 ] ) == "" ) {
+                        if ( trim( $temp[ 1 ] ) == "" ) {
                             throw new DomainException( "Invalid trans-unit id found. EMPTY value", 400 );
                         } else {
-                            $trans_unit_id_array_for_uniqueness_check[] = trim( $temp[ 2 ] );
+                            $trans_unit_id_array_for_uniqueness_check[] = trim( $temp[ 1 ] );
                         }
 
-                        $xliff[ 'files' ][ $i ][ 'trans-units' ][ $j ][ 'attr' ][ 'id' ] = $temp[ 2 ];
+                        $xliff[ 'files' ][ $i ][ 'trans-units' ][ $j ][ 'attr' ][ 'id' ] = $temp[ 1 ];
 
 						// Translate
 						unset($temp);
@@ -185,36 +168,29 @@ class Xliff_Parser {
 						if (isset($temp[1]))
 							$xliff['files'][$i]['trans-units'][$j]['attr']['translate'] = $temp[1];
 
-                        /**
-                         * Approved
-                         * @see http://docs.oasis-open.org/xliff/v1.2/os/xliff-core.html#approved
-                         */
-                        unset($temp);
-                        preg_match('|approved\s?=\s?["\'](.*?)["\']|si', $trans_unit, $temp);
-                        if (isset($temp[1]))
-                            $xliff['files'][$i]['trans-units'][$j]['attr']['approved'] = filter_var( $temp[1], FILTER_VALIDATE_BOOLEAN );
 
-                        unset($temp);
+						// Getting Source and Target raw content
+						unset($temp);
 
-                        /**
-                         * Rebuild the trans-unit tag integrity after preg_split
-                         */
-                        $trans_unit = '<trans-unit ' . explode( '</trans-unit>', $trans_unit )[ 0 ] . '</trans-unit>';
+						//TODO BUG <ph id="10" x="&lt;endcmp/>&quot;&gt;{10}</ph>
+						preg_match('|<source.*?>(.*?)</source>|si', $trans_unit, $temp);
+						// just in case of a <source />
+						if (!isset($temp[1])) {
+							$temp[1] = '';
+						}
+						$temp[1] = self::fix_non_well_formed_xml($temp[1]);
+						$xliff['files'][$i]['trans-units'][$j]['source']['raw-content'] = $temp[1];
 
-                        // Getting Source and Target raw content
-                        $this->getSource( $xliff, $i, $j, $trans_unit );
-						$this->getTarget( $xliff, $i, $j, $trans_unit );
-						$this->getContextGroups( $xliff, $i, $j, $trans_unit );
-						$this->getAltTrans( $xliff, $i, $j, $trans_unit );
-						$this->getSDLStatus( $xliff, $i, $j, $trans_unit );
 
-                        $this->evalNotes($xliff, $i, $j, $trans_unit);
+						unset($temp);
+
+						self::getTarget( $xliff, $i, $j, $trans_unit );
+
+                        self::evalNotes($xliff, $i, $j, $trans_unit);
 
 						// Add here other trans-unit sub-elements you need, copying and pasting the 3 lines below
 
                         unset( $temp );
-
-                        //TODO improve with DOM
                         preg_match( '|<seg-source.*?>(.*?)</seg-source>|si', $trans_unit, $temp );
                         if ( isset( $temp[ 1 ] ) ) {
 
@@ -309,25 +285,21 @@ class Xliff_Parser {
 	}
 
 
-    /**
-     * This function exists because many developers started adding html tags directly into the XLIFF source since:
-     * 1) XLIFF tag remapping is too complex for them
-     * 2) Trados does not lock Tags within the <source> that are expressed as &gt;b&lt; but is tolerant to html tags in <source>
-     *
-     * in short people typed:
-     * <source>The <b>red</d> house</source> or worst <source>5 > 3</source>
-     * instead of
-     * <source>The <g id="1">red</g> house.</source> and <source>5 &gt; 3</source>
-     *
-     * This function will do the following
-     * <g id="1">Hello</g>, 4 > 3 -> <g id="1">Hello</g>, 4 &gt; 3
-     * <g id="1">Hello</g>, 4 > 3 &gt; -> <g id="1">Hello</g>, 4 &gt; 3 &gt; 2
-     *
-     * @param $content string
-     *
-     * @return mixed|string
-     */
-	public static function fix_non_well_formed_xml( $content ) {
+	/**
+	This function exists because many developers started adding html tags directly into the XLIFF source since:
+	1) XLIFF tag remapping is too complex for them
+	2) Trados does not lock Tags within the <source> that are expressed as &gt;b&lt; but is tollerant to html tags in <source>
+
+	in short people typed:
+	<source>The <b>red</d> house</source> or worst <source>5 > 3</source>
+	instead of
+	<source>The <g id="1">red</g> house.</source> and <source>5 &gt; 3</source>
+
+	This function will do the following
+	<g id="1">Hello</g>, 4 > 3 -> <g id="1">Hello</g>, 4 &gt; 3
+	<g id="1">Hello</g>, 4 > 3 &gt; -> <g id="1">Hello</g>, 4 &gt; 3 &gt; 2
+	 */
+	public static function fix_non_well_formed_xml($content) {
 
 		if (self::$find_xliff_tags_reg === null) {
 			// List of the tags that we don't want to escape
@@ -370,7 +342,7 @@ class Xliff_Parser {
 		}
 
 		// Escape the string with the remaining non-XLIFF tags
-		$content = htmlspecialchars($content, ENT_NOQUOTES, 'UTF-8', false);
+		$content = htmlspecialchars($content, ENT_QUOTES, 'UTF-8', false);
 
 		// Put again in place the original XLIFF tags replacing placeholders
 		foreach ($tags_placeholders as $tag => $placeholder) {
@@ -381,244 +353,35 @@ class Xliff_Parser {
 		
 	}
 
-    private function evalNotes( &$xliff, $i, $j, $trans_unit ) {
+    private static function evalNotes(&$xliff, $i, $j, $trans_unit) {
         $temp = null;
-        preg_match_all( '|<note.*?>(.+?)</note>|si', $trans_unit, $temp );
-        $matches = array_values( $temp[ 1 ] );
-        if ( count( $matches ) > 0 ) {
-            foreach ( $matches as $match ) {
-
-                $note = [];
-                if ( $this->isJSON( $match ) ) {
-                    $note[ 'json' ] = $this->cleanCDATA( $match );
-                } else {
-                    $note[ 'raw-content' ] = $this->fix_non_well_formed_xml( $match );
-                }
-
-                $xliff[ 'files' ][ $i ][ 'trans-units' ][ $j ][ 'notes' ][] = $note;
-
+        preg_match_all('|<note.*>(.+?)</note>|si', $trans_unit, $temp);
+        $matches = array_values( $temp[1] );
+        if ( count($matches) > 0 ) {
+            foreach($matches as $match) {
+                $note = array(
+                    'raw-content' => self::fix_non_well_formed_xml($match)
+                );
+                $xliff['files'][$i]['trans-units'][$j]['notes'][] = $note ;
             }
         }
     }
 
-    private function isJSON( $noteField ){
-        try {
-            $noteField = $this->cleanCDATA( $noteField );
-            if( empty( $noteField ) ) throw new Exception();
-            json_decode( $noteField );
-            Utils::raiseJsonExceptionError();
-        } catch ( Exception $exception ){
-            return false;
-        }
-        return true;
-    }
+    private static function getTarget( &$xliff, $i, $j, $trans_unit ) {
 
-    private function cleanCDATA( $testString ){
-        $cleanXMLContent = new SimpleXMLElement( '<rootNoteNode>' . $testString . '</rootNoteNode>', LIBXML_NOCDATA );
-        return $cleanXMLContent->__toString();
-    }
-
-    /**
-     * @param $xliff
-     * @param $i
-     * @param $j
-     * @param $trans_unit
-     */
-    private function getSource( &$xliff, $i, $j, $trans_unit ) {
-        try {
-            $tagArray = $this->_getTagContent( 'source', $trans_unit );
-            $xliff[ 'files' ][ $i ][ 'trans-units' ][ $j ][ 'source' ][ 'raw-content' ] = self::fix_non_well_formed_xml( $tagArray[ 'content' ] );
-        } catch( UnexpectedValueException $e ){
-            //Found Empty Source Tag
-//            Log::doLog( $e->getMessage() );
-        }
-    }
-
-    /**
-     * @param $xliff
-     * @param $i
-     * @param $j
-     * @param $trans_unit
-     */
-    private function getTarget( &$xliff, $i, $j, $trans_unit ) {
-        try {
-            $tagArray = $this->_getTagContent( 'target', $trans_unit );
-            $xliff[ 'files' ][ $i ][ 'trans-units' ][ $j ][ 'target' ][ 'raw-content' ] = self::fix_non_well_formed_xml( $tagArray[ 'content' ] );
-            $xliff[ 'files' ][ $i ][ 'trans-units' ][ $j ][ 'target' ][ 'attr' ] = $tagArray[ 'attr' ];
-        } catch( UnexpectedValueException $e ){
-            //Found Empty Target Tag
-//            Log::doLog( $e->getMessage() );
-        }
-    }
-
-    private function getAltTrans( &$xliff, $i, $j, $trans_unit ){
-        try {
-
-            $tagList = $this->_getTagContent( 'alt-trans', $trans_unit, 'trans-unit', true );
-
-            foreach( $tagList as $tag ){
-
-                $alt_trans = [];
-                $alt_trans[ 'attr' ] = @$tag[ 'attr' ];
-
-                try{
-
-                    $sourceArray = $this->_getTagContent( 'source', $tag[ 'content' ], 'root' );
-                    $alt_trans[ 'source' ] = self::fix_non_well_formed_xml( $sourceArray[ 'content' ] );
-
-                } catch( UnexpectedValueException $e ){
-                    //Found Empty Target Tag
-//                    Log::doLog( $e->getMessage() );
-                }
-
-                $targetArray = $this->_getTagContent( 'target', $tag[ 'content' ], 'root' );
-                $alt_trans[ 'target' ] = self::fix_non_well_formed_xml( $targetArray[ 'content' ] );
-
-                $xliff[ 'files' ][ $i ][ 'trans-units' ][ $j ][ 'alt-trans' ][] = $alt_trans;
-
-            }
-
-        } catch( UnexpectedValueException $e ){
-            //Found Empty Target Tag
-//            Log::doLog( $e->getMessage() );
-        }
-    }
-
-    private function getContextGroups( &$xliff, $i, $j, $trans_unit ){
-        try {
-
-            $tagList = $this->_getTagContent( 'context-group', $trans_unit, 'trans-unit', true );
-
-            foreach( $tagList as $tag ){
-
-                $context_group = [];
-                $context_group[ 'attr' ] = @$tag[ 'attr' ];
-
-                try{
-
-                    $contexts = $this->_getTagContent( 'context', $tag[ 'content' ], 'root', true );
-                    $context_group[ 'contexts' ] = $contexts;
-
-                } catch( UnexpectedValueException $e ){
-                    //Found Empty Target Tag
-//                    Log::doLog( $e->getMessage() );
-                }
-
-                $xliff[ 'files' ][ $i ][ 'trans-units' ][ $j ][ 'context-group' ][] = $context_group;
-
-            }
-
-        } catch( UnexpectedValueException $e ){
-            //Found Empty Target Tag
-//            Log::doLog( $e->getMessage() );
-        }
-    }
-
-    /**
-     * Extract tag content using DOM ( fallback to old implementation on failure )
-     *
-     * @param string $tagName
-     * @param string $domString
-     * @param string $parentNodeName
-     *
-     * @param bool   $asList
-     *
-     * @return array
-     */
-    private function _getTagContent( $tagName, $domString, $parentNodeName = 'trans-unit', $asList = false ) {
-
-        libxml_use_internal_errors( true );
-        $dDoc          = new DOMDocument();
-        $trg_xml_valid = @$dDoc->loadXML( "<root>$domString</root>", LIBXML_NOENT | LIBXML_COMPACT | LIBXML_NOEMPTYTAG );
-
-        /**
-         * Get all tags by their name
-         */
-        $tagList = $dDoc->getElementsByTagName( $tagName );
-
-        $TagList = [];
-
-        if ( $trg_xml_valid === false ) {
-
-            $errorList = libxml_get_errors();
-            Log::doLog( "Invalid target found, fallback to old implementation to get the content by regular expression" );
-            Log::doLog( "$domString" );
-            Log::doLog( $errorList );
-
-            //fallback to old regexp wrong implementation
-            $regexp = "|<{$tagName}[^>]*?>(.*?)</{$tagName}>|si";
-
-            preg_match( $regexp, $domString, $temp );
-            $TagList[] = $temp[ 1 ];
-
-            libxml_clear_errors();
-
-        } elseif ( $tagList->length ) {
-
-            foreach ( $tagList as $_tag ) {
-
-                $_tmpTag = "";
-                $_tagAttributes = [];
-
-                /**
-                 * Extract Attributes if they are present
-                 *
-                 * Ex:
-                 * <p align=center style="font-size: 12px;">some text</p>
-                 *
-                 * $attr->nodeName == 'align' :: $attr->nodeValue == 'center'
-                 * $attr->nodeName == 'style' :: $attr->nodeValue == 'font-size: 12px;'
-                 *
-                 * @var $_tag DOMNode
-                 */
-                if ( $_tag->hasAttributes() ) {
-                    foreach ( $_tag->attributes as $attr ) {
-                        $_tagAttributes[ $attr->nodeName ] = $attr->nodeValue;
-                    }
-                }
-
-                /** @var $_tag DOMElement|DOMNode */
-                $childNodes = $_tag->hasChildNodes();
-
-                //<alt-trans> has also <source> and <target> tags inside, we want only tags which have <trans-unit> as root element
-                //if not specified
-                if ( $_tag->parentNode->nodeName == $parentNodeName && !empty( $childNodes ) ) {
-
-                    //Loop on the child nodes, saveXML concatenation
-                    foreach ( $_tag->childNodes as $node ) {
-                        $_tmpTag .= $dDoc->saveXML( $node );
-                    }
-
-                }
-
-                $TagList[] = [
-                        'content' => $_tmpTag,
-                        'attr'    => $_tagAttributes
-                ];
-
-            }
-
+        preg_match( '|<target.*?>(.+?)</target>|si', $trans_unit, $temp );
+        if ( isset( $temp[ 1 ] ) ) {
+            $temp[ 1 ] = self::fix_non_well_formed_xml( $temp[ 1 ] );
+            $xliff[ 'files' ][ $i ][ 'trans-units' ][ $j ][ 'target' ][ 'raw-content' ] = $temp[ 1 ];
         }
 
-        if ( empty( $TagList ) ) {
-            throw new UnexpectedValueException( "The content of the tag $tagName is empty." );
-        }
-
-        if( $asList ){
-            return $TagList;
-        } else {
-            return $TagList[0];
-        }
-
-    }
-
-    private function getSDLStatus( &$xliff, $i, $j, $trans_unit ){
         //['attr']['translate']
         //<sdl:seg id="4" locked="true"
         preg_match( '|<sdl:seg.*?(locked).*?>.+?</sdl:seg>|si', $trans_unit, $temp );
         if ( isset( $temp[ 1 ] ) ) {
             $xliff[ 'files' ][ $i ][ 'trans-units' ][ $j ][ 'attr' ][ 'locked' ] = true;
         }
+
     }
 
 }

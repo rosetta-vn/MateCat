@@ -21,8 +21,6 @@ use AMQHandler ;
 
 class QaCheckBlacklist extends BaseFeature {
 
-    const FEATURE_CODE = 'qa_check_blacklist';
-
     const BLACKLIST_SCOPE = 'blacklist' ;
 
     public function postTMSegmentAnalyzed( $params ) {
@@ -84,29 +82,28 @@ class QaCheckBlacklist extends BaseFeature {
 
     }
 
-    public function filterGlobalWarnings( $result, $params ) {
+    public function filterGlobalWarnings($data, $params) {
         /**
          * @var $chunk \Chunks_ChunkStruct
          */
-        $chunk = $params[ 'chunk' ];
+        $chunk =$params['chunk'] ;
 
         $warnings = WarningDao::findByChunkAndScope( $chunk, self::BLACKLIST_SCOPE );
 
-        $data_elements = [];
+        $data_elements = array() ;
 
-        if ( count( $warnings ) > 0 ) {
-            $data_elements = array_map( function ( WarningStruct $element ) {
-                return [
+        if ( count($warnings) > 0 ) {
+            $data_elements = array_map(function(WarningStruct $element) {
+                return array(
                         'id_segment' => $element->id_segment,
-                        'severity'   => $element->severity,
-                        'data'       => json_decode( $element->data, true )
-                ];
-            }, $warnings );
+                        'severity' => $element->severity,
+                        'data' => json_decode( $element->data, TRUE )
+                );
+            }, $warnings);
         }
 
-        $result[ 'data' ][ self::BLACKLIST_SCOPE ] = [ 'matches' => $data_elements ];
-
-        return $result;
+        $data[self::BLACKLIST_SCOPE] = array('matches' => $data_elements ) ;
+        return $data ;
 
     }
 

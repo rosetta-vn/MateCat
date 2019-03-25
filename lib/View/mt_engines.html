@@ -2,17 +2,22 @@
     <!-- inizio blocco microsoft -->
     <template id="mt-provider-microsofthub-fields">
         <p class="required pull-left"><sup>*</sup> Required fields.</p>
-        <div class="mt-error-key">Error message</div>
+        <br class="clear" />
+        <span class="mt-error-key">Error message</span>
         <label for="new-engine-name">Engine name<sup>*</sup></label>
-        <input class="required" id="new-engine-name" />
+        <input class="required" id="new-engine-name" placeholder="here" />
         <div class="provider-data">
             <div class="provider-field">
-                <label>KeyId<sup>*</sup></label>
-                <input class="required" data-field-name="client_id"/>
+                <label>ClientID<sup>*</sup></label>
+                <input class="required" data-field-name="client_id" placeholder="here" />
+            </div>
+            <div class="provider-field">
+                <label>Client Secret<sup>*</sup></label>
+                <input class="required" data-field-name="secret" placeholder="here" />
             </div>
             <div class="provider-field">
                 <label>Category</label>
-                <input data-field-name="category"/>
+                <input data-field-name="category" placeholder="here" />
             </div>
         </div>
     </template>
@@ -30,14 +35,15 @@
     <template id="mt-provider-iptranslator-fields">
         <p>Fill out the form with the parameters provided by Iconic Translation Machines to connect to IPTranslator.</p>
         <p class="required pull-left"><sup>*</sup> Required fields.</p>
-        <div class="mt-error-key">Error message</div>
+        <br class="clear" />
+        <span class="mt-error-key">Error message</span>
         <label for="new-engine-name">Engine name<sup>*</sup></label>
-        <input class="required" id="new-engine-name" />
+        <input class="required" id="new-engine-name" placeholder="here" />
         <br class="clear" />
         <div class="provider-data">
             <div class="provider-field">
                 <label>Key<sup>*</sup></label>
-                <input class="required" data-field-name="secret" />
+                <input class="required" data-field-name="secret" placeholder="here" />
                 <br class="clear" />
             </div>
         </div>
@@ -56,7 +62,7 @@
     <template id="mt-provider-mmt-fields">
         <div class="provider-data">
             <div class="provider-field">
-                <label>ModernMT License</label>
+                <label>MMT License</label>
                 <input class="required" data-field-name="secret" placeholder="Enter your license" />
                 <br class="clear" />
             </div>
@@ -64,7 +70,7 @@
         </div>
     </template>
     <template id="mt-provider-mmt-msg">
-        <p><strong>ModernMT</strong> is an Adaptive Neural Machine Translation. </p>
+        <p><strong>MMT</strong> is an Adaptive Neural Machine Translation. </p>
         <p>It learns from your TMs and corrections in real time and provides the best suggestions based on the content type and on your style and terminology.</p>
         <p><strong>ONLY PAY FOR WHAT YOU USE</strong><br /><strong>4€</strong> every <strong>1,000 words</strong>, monthly billing</p>
         <a href="https://www.modernmt.eu/license/buy" class="continuebtn btn-ok" target="_blank">Buy Online</a>
@@ -77,20 +83,21 @@
     <template id="mt-provider-moses-fields">
         <p>Fill out the form with the connection data to your own Moses MT system.</p>
         <p class="required pull-left"><sup>*</sup> Required fields.</p>
-        <div class="mt-error-key">Error message</div>
+        <br class="clear" />
+        <span class="mt-error-key">Error message</span>
         <br class="clear" />
         <label for="new-engine-name">Engine name<sup>*</sup></label>
-        <input class="required" id="new-engine-name" />
+        <input class="required" id="new-engine-name" placeholder="here" />
         <br class="clear" />
         <div class="provider-data">
             <div class="provider-field">
                 <label>URL<sup>*</sup></label>
-                <input class="required" data-field-name="url" />
+                <input class="required" data-field-name="url" placeholder="here" />
                 <br class="clear" />
             </div>
             <div class="provider-field">
                 <label>API key<sup>*</sup></label>
-                <input class="required" data-field-name="secret" />
+                <input class="required" data-field-name="secret" placeholder="here" />
                 <br class="clear" />
             </div>
         </div>
@@ -108,25 +115,26 @@
     <template id="mt-provider-tauyou-fields">
         <p>Fill out the form with the connection data to your own Tauyou MT system.</p>
         <p class="required pull-left"><sup>*</sup> Required fields.</p>
-        <div class="mt-error-key">Error message</div>
+        <br class="clear" />
+        <span class="mt-error-key">Error message</span>
         <br class="clear" />
         <label for="new-engine-name">Engine name<sup>*</sup></label>
-        <input class="required" id="new-engine-name" />
+        <input class="required" id="new-engine-name" placeholder="here" />
         <br class="clear" />
         <div class="provider-data">
             <div class="provider-field">
                 <label>URL<sup>*</sup></label>
-                <input class="required" data-field-name="url" />
+                <input class="required" data-field-name="url" placeholder="here" />
                 <br class="clear" />
             </div>
             <div class="provider-field">
                 <label>API key<sup>*</sup></label>
-                <input class="required" data-field-name="secret" />
+                <input class="required" data-field-name="secret" placeholder="here" />
                 <br class="clear" />
             </div>
         </div>
     </template>
-    <template id="mt-provider-tauyou-msg">
+    <template id="mt-provider-tauyou-msg">client
         <p>Customized machine translation engines from tauyou are created starting from the Translation Memories (TMs) from our clients, so that we provide the best possible adaptation for a particular language field. <br/>
             Our clients in more than 20 countries are post-editing machine translation in the languages they work on, including but not limited to all European Languages, Chinese, Japanese, Korean, and Russian. </p>
         <p>If you want to learn more about our managed MT services, <a href="mailto:info@tauyou.com?Subject=tauyou MT in MateCat" target="_top">please contact us</a>.</p>
@@ -137,43 +145,33 @@
 <div metal:define-macro="template-letsmt">
     <!-- sakam letsmt bloku -->
     <template id="mt-provider-letsmt-fields">
-        <div class="mt-error-key">Error message</div>
-        <tildemt-selector id="tildemt"></tildemt-selector>
-        <input type="hidden" id="new-engine-name" />
+        <style>
+            .clientid-link {
+                float: right;
+                margin-top: -10px;
+            }
+        </style>
+        <p class="required pull-left"><sup>*</sup> Required fields.</p>
+        <br class="clear" />
+        <span class="mt-error-key">Error message</span>
+        <label for="new-engine-name">Engine name<sup>*</sup></label>
+        <input class="required" id="new-engine-name" placeholder="here" />
         <div class="provider-data">
-             <div class="provider-field">
-                 <input type="hidden" id="tildemt-config" data-field-name="tildemt_config" />
-             </div>
+            <div class="provider-field">
+                <label>Client ID<sup>*</sup></label>
+                <input class="required" data-field-name="client_id" placeholder="here" />
+            </div>
+            <a href="https://readymt.tilde.com/Account/LoginApp?Client=matecat" target="_blank" class="clientid-link">Get my Client ID</a>
+            <br class="clear" />
         </div>
-
         <script>
-            // Patch some letsmt-selector web components styles.
-            // I'd use css mixins instead but they're not supported in any of the browsers yet
-            var style = document.createElement( 'style' );
-            style.innerHTML =
-                   '#add_button, .ok-button, .cancel-button  { \
-                    background-color: #09beec !important; \
-                    font-size: 18px !important; \
-                    border: 1px solid #797979 !important; \
-                    border-radius: 2px !important; \
-                    font-weight: bold !important; } \
-                    .cancel-button { background-color: #f26522 !important; }';
-            document.getElementById("tildemt").shadowRoot.appendChild( style );
-            
-            var tildemtConfig = {};
-            document.getElementById("tildemt").addEventListener("save", function(details){
-                //console.log(details.detail);
-                tildemtConfig = details.detail;
-                $("#tildemt-config").val(JSON.stringify(tildemtConfig));
-                $("#new-engine-name").val(tildemtConfig['engineName']);
-                $('#add-mt-provider-confirm').trigger('click');
-            });
+            $('#mt-provider-details #add-mt-provider-confirm .uploadkey').text('Continue');
         </script>
     </template>
     <template id="mt-provider-letsmt-msg">
         <style>
             .msg-button-container .continuebtn {
-                width: 100%!important;
+                width: 122px!important;
                 display: inline-block!important;
             }
             .msg-button-container {
@@ -203,6 +201,190 @@
         </div>
     </template>
     <template id="mt-provider-letsmt-config-fields">
+        <script>
+            <![CDATA[
+            // The first template set this text to "Continue". Set it back now.
+            $('#mt-provider-details #add-mt-provider-confirm .uploadkey').text('Confirm');
+
+            // for some reason the javascript gets escaped without the CDATA tag. TODO: find out why
+            function fetchTerms() {
+                var termsFieldSelector = '.insert-tm .provider-data .provider-field [data-field-name="terms_id"]';
+                $(termsFieldSelector).html("");
+
+                var providerData = {};
+                $('.insert-tm .provider-data .provider-field').each(function () {
+                    var field = $(this).find('input, select').first();
+                    if (field.prop('type') === 'checkbox') {
+                        providerData[field.attr('data-field-name')] = field.prop('checked');
+                    } else {
+                        providerData[field.attr('data-field-name')] = field.val();
+                    }
+                });
+
+                if (!providerData['system_id']) {
+                    return;
+                }
+
+                providerData['function'] = 'getTermList';
+
+                var provider = 'letsmt';
+                var name = 'temp engine';
+                var providerName = 'Tilde MT';
+                data = {
+                    action: 'engine',
+                    exec: 'execute',
+                    name: name,
+                    provider: provider,
+                    data: JSON.stringify(providerData)
+                };
+                context = data;
+                context.providerName = providerName;
+
+                APP.doRequest({
+                    data: data,
+                    context: context,
+                    error: function() {
+                        console.log('error');
+                    },
+                    success: function(d) {
+                        console.log('AJAX response received.');
+                        if(d.errors.length) {
+                            console.log('error');
+                            $('#mt-provider-details .error').text(d.errors[0].message);
+                        } else {
+                            $('#mt-provider-details .error').text("");
+                            if(d.data.result && d.data.result.terms && Object.keys(d.data.result.terms).length) {
+                                $(termsFieldSelector).append("<option value=''>--</option>");
+                                $terms = d.data.result.terms;
+                                console.log('success');
+                                for (var key in $terms){
+                                    $(termsFieldSelector).append("<option value='" + key + "'>" + $terms[key] + "</option>");
+                                }
+                            }
+                        }
+
+                    }
+                });
+            }
+
+            function toggleQEEnabled(checkbox) {
+                var disabled = !checkbox.checked;
+                $('#minimum_qe_field input').prop('disabled', disabled);
+                if (disabled) {
+                    $('#minimum_qe_field').addClass('disabled');
+                } else {
+                    $('#minimum_qe_field').removeClass('disabled');
+                }
+            }
+
+            function createFilters() {
+                var sourceSelect = $('#source_lang_field select');
+                var targetSelect = $('#target_lang_field select');
+                var systemSelect = $('#system_field select');
+                var systemOptions = $('#system_field select option');
+                var sourceLangIdInput = $('#source-lang-id');
+                var targetLangIdInput = $('#target-lang-id');
+                var showOnlyRunningCheckbox = $('#filter_running_field input');
+                var showOnlyRunning = showOnlyRunningCheckbox.prop('checked');
+                var runningStatuses = { running: true, standby: true };
+                sourceSelect.empty();
+
+                // a mapping from available source languages to respective target languages
+                var directions = [];
+                systemOptions.each(function (){
+                    var systemStatus = $(this).data('status');
+                    if(!(systemStatus in runningStatuses) && showOnlyRunning) {
+                        return;
+                    }
+                    var sourceCode = $(this).data('source-language-code');
+                    var targetCode = $(this).data('target-language-code');
+                    var sourceName = $(this).data('source-language-name');
+                    var targetName = $(this).data('target-language-name');
+
+                    if(!(sourceCode in directions)){
+                        directions[sourceCode] = {};
+                        directions[sourceCode].name = sourceName;
+                        directions[sourceCode].target = {};
+                    }
+                    directions[sourceCode].target[targetCode] = targetName;
+                });
+
+                var sortedSourceCodes = [];
+                for (var sourceCode in directions) {
+                    sortedSourceCodes.push(sourceCode);
+                }
+                sortedSourceCodes.sort();
+
+                for (var i=0; i<sortedSourceCodes.length; i++) {
+                    var sourceCode = sortedSourceCodes[i];
+                    var option = $('<option value="' + sourceCode + '">' + directions[sourceCode].name + '</option>');
+                    sourceSelect.append(option);
+                }
+
+                var filterSystems = function() {
+                    var selectedSourceCode = sourceSelect.val();
+                    var selectedTargetCode = targetSelect.val();
+
+                    systemOptions.each(function () {
+                        var systemSourceCode = $(this).data('source-language-code');
+                        var systemTargetCode = $(this).data('target-language-code');
+                        var systemStatus = $(this).data('status');
+
+                        if (systemSourceCode == selectedSourceCode
+                                && systemTargetCode == selectedTargetCode
+                                &&((systemStatus in runningStatuses) || !showOnlyRunning)) {
+                            $(this).show();
+                        } else {
+                            $(this).hide();
+                        }
+                    });
+
+                    var firstAvailableTargetCode = $(systemSelect.find('option').not(function() { return $(this).css("display") == "none" })[0]).val();
+                    systemSelect.val(firstAvailableTargetCode).change();
+                }
+
+                var fillTargetLanguages = function () {
+                    targetSelect.empty();
+                    var selectedSourceCode = sourceSelect.val();
+                    var targetChoices = directions[selectedSourceCode].target
+
+                    var sortedTargetCodes = [];
+                    for (var targetCode in targetChoices) {
+                        sortedTargetCodes.push(targetCode);
+                    }
+                    sortedTargetCodes.sort();
+
+                    for (var i=0; i<sortedTargetCodes.length; i++) {
+                        var targetCode = sortedTargetCodes[i];
+                        var option = $('<option value="' + targetCode + '">' + targetChoices[targetCode] + '</option>');
+                        targetSelect.append(option);
+                    }
+
+                    targetSelect.val(targetSelect.find("option:first").val()).change();
+                }
+
+                var setLanguageCodes = function () {
+                    var systemSourceCode = $("option:selected", this).data('source-language-code');
+                    var systemTargetCode = $("option:selected", this).data('target-language-code');
+
+                    sourceLangIdInput.val(systemSourceCode);
+                    targetLangIdInput.val(systemTargetCode);
+                }
+
+                // this method can get called multiple times. remove previously added event handlers
+                sourceSelect.off('change');
+                targetSelect.off('change');
+                sourceSelect.change(fillTargetLanguages);
+                targetSelect.change(filterSystems);
+                systemSelect.change(setLanguageCodes);
+                sourceSelect.val(sourceSelect.find("option:first").val()).change();
+            }
+
+            function renderMTConfigCallback () {
+                createFilters();
+            }
+            ]]>
+        </script>
         <style>
             .insert-tm select {
                 width: 324px!important;
@@ -246,13 +428,14 @@
             }
         </style>
         <p class="required pull-left"><sup>*</sup> Required fields.</p>
-        <div class="mt-error-key">Error message</div>
-        <input class="required hide" id="new-engine-name" />
+        <br class="clear" />
+        <span class="mt-error-key">Error message</span>
+        <input class="required hide" id="new-engine-name" placeholder="here" />
         <br class="clear" />
         <div class="provider-data">
             <div class="provider-field hide">
                 <label>Client ID<sup>*</sup></label>
-                <input class="required" data-field-name="client_id" />
+                <input class="required" data-field-name="client_id" placeholder="here" />
             </div>
             <div id="source_lang_field" class="pull-left">
                 <label>From</label>
@@ -309,13 +492,14 @@
     <template id="mt-provider-apertium-fields">
         <p>Fill out the form with the connection data to your own Apertium MT system.</p>
         <p class="required pull-left"><sup>*</sup> Required fields.</p>
-        <div class="mt-error-key">Error message</div>
+        <br class="clear" />
+        <span class="mt-error-key">Error message</span>
         <label for="new-engine-name">Engine name<sup>*</sup></label>
-        <input class="required" id="new-engine-name" />
+        <input class="required" id="new-engine-name" placeholder="here" />
         <div class="provider-data">
             <div class="provider-field">
                 <label>Key<sup>*</sup></label>
-                <input class="required" data-field-name="secret" />
+                <input class="required" data-field-name="secret" placeholder="here" />
             </div>
         </div>
     </template>
@@ -343,13 +527,14 @@
     <template id="mt-provider-altlang-fields">
         <p>Fill out the form with the connection data to your own AltLang MT system.</p>
         <p class="required pull-left"><sup>*</sup> Required fields.</p>
-        <div class="mt-error-key">Error message</div>
+        <br class="clear" />
+        <span class="mt-error-key">Error message</span>
         <label for="new-engine-name">Engine name<sup>*</sup></label>
-        <input class="required" id="new-engine-name" />
+        <input class="required" id="new-engine-name" placeholder="here" />
         <div class="provider-data">
             <div class="provider-field">
                 <label>Key<sup>*</sup></label>
-                <input class="required" data-field-name="secret" />
+                <input class="required" data-field-name="secret" placeholder="here" />
             </div>
         </div>
     </template>
@@ -379,17 +564,18 @@
     <template id="mt-provider-smartmate-fields">
         <p>Fill out the form with the connection data to your own SmartMATE system.</p>
         <p class="required pull-left"><sup>*</sup> Required fields.</p>
-        <div class="mt-error-key">Error message</div>
+        <br class="clear" />
+        <span class="mt-error-key">Error message</span>
         <label for="new-engine-name">Engine name<sup>*</sup></label>
-        <input class="required" id="new-engine-name" />
+        <input class="required" id="new-engine-name" placeholder="here" />
         <div class="provider-data">
             <div class="provider-field">
                 <label for="user-name">User<sup>*</sup></label>
-                <input class="required" data-field-name="client_id" id="user-name" />
+                <input class="required" data-field-name="client_id" id="user-name" placeholder="here" />
             </div>
             <div class="provider-field">
                 <label>Key<sup>*</sup></label>
-                <input class="required" data-field-name="secret" />
+                <input class="required" data-field-name="secret" placeholder="here" />
             </div>
         </div>
     </template>
@@ -411,27 +597,8 @@
 <div metal:define-macro="template-yandextranslate">
     <template id="mt-provider-yandextranslate-fields">
         <p class="required pull-left"><sup>*</sup> Required fields.</p>
-        <div class="mt-error-key">Error message</div>
-        <label for="new-engine-name">Engine name<sup>*</sup></label>
-        <input class="required" id="new-engine-name" />
-        <div class="provider-data">
-            <div class="provider-field">
-                <label>API-key<sup>*</sup></label>
-                <input class="required" data-field-name="secret" />
-            </div>
-        </div>
-    </template>
-    <template id="mt-provider-yandextranslate-msg">
-        <p>Yandex.Translate is a modern statistical MT system available as an online public service, an application for major mobile platforms and a commercial API. The service currently supports more than 90 languages and this number is continuously growing. Yandex.Translate API processes billions of translations daily for its customers ranging from LSPs and language learning applications to worldwide media monitoring companies. Customer data security is a key priority for Yandex.Translate API - it uses secure connections and carefully handles sensitive data.</p>
-        <a href="https://translate.yandex.com/developers" target="_blank" class="continuebtn btn-ok">Find out more</a>
-    </template>
-</div>
-
-
-<div metal:define-macro="template-googletranslate">
-    <template id="mt-provider-googletranslate-fields">
-        <p class="required pull-left"><sup>*</sup> Required fields.</p>
-        <div class="mt-error-key">Error message</div>
+        <br class="clear" />
+        <span class="mt-error-key">Error message</span>
         <label for="new-engine-name">Engine name<sup>*</sup></label>
         <input class="required" id="new-engine-name" placeholder="here" />
         <div class="provider-data">
@@ -441,8 +608,8 @@
             </div>
         </div>
     </template>
-    <template id="mt-provider-googletranslate-msg">
-        <p>Google Translate is a free multilingual machine translation service developed by Google, to translate text from one language into another. It offers a website interface, mobile apps for Android and iOS, and an API that helps developers build browser extensions and software applications. Google Translate supports over 100 languages at various levels and as of May 2017, serves over 500 million people daily.</p>
-        <a href="https://cloud.google.com/translate/" target="_blank" class="continuebtn btn-ok">Find out more</a>
+    <template id="mt-provider-yandextranslate-msg">
+        <p>Yandex.Translate is a modern statistical MT system available as an online public service, an application for major mobile platforms and a commercial API. The service currently supports more than 90 languages and this number is continuously growing. Yandex.Translate API processes billions of translations daily for its customers ranging from LSPs and language learning applications to worldwide media monitoring companies. Customer data security is a key priority for Yandex.Translate API - it uses secure connections and carefully handles sensitive data.</p>
+        <a href="https://translate.yandex.com/developers" target="_blank" class="continuebtn btn-ok">Find out more</a>
     </template>
 </div>

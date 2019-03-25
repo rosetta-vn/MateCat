@@ -18,18 +18,17 @@ class FilesJobDao extends  DataAccess_AbstractDao {
      * @return array
      */
     public function getSegmentBoundariesForChunk( Files_FileStruct $file, Chunks_ChunkStruct $chunk ) {
-        $sql = "SELECT MIN(st.id_segment) AS MIN, MAX(st.id_segment) as MAX
+        // TODO: if the conditions on this query are efficient enough
+
+        $sql = "SELECT MIN(segments.id) AS MIN, MAX(segments.id) as MAX
           FROM files_job
             JOIN jobs
               ON jobs.id = files_job.id_job
                 AND files_job.id_file = :id_file
                 AND password = :password
-
-            JOIN segment_translations st
-              ON st.id_segment
-                BETWEEN jobs.job_first_segment AND jobs.job_last_segment
-                AND jobs.id  = :id_job
-          ";
+            JOIN segments
+              ON segments.id_file = files_job.id_file
+                AND id_job = :id_job " ;
 
         $conn = Database::obtain()->getConnection() ;
 

@@ -7,7 +7,7 @@
  * 
  */
 
-abstract class DataAccess_AbstractDaoObjectStruct extends stdClass implements DataAccess_IDaoStruct, Countable {
+abstract class DataAccess_AbstractDaoObjectStruct extends stdClass implements Countable {
 
     protected $validator;
     protected $cached_results = array();
@@ -60,11 +60,10 @@ abstract class DataAccess_AbstractDaoObjectStruct extends stdClass implements Da
      *
      */
     protected function cachable($method_name, $params, $function) {
-        $resultset = @$this->cached_results[ $method_name ];
-        if( $resultset == null ){
-            $resultset = $this->cached_results[ $method_name ] = call_user_func($function, $params);
+        if ( !array_key_exists($method_name,  $this->cached_results) ) {
+            $this->cached_results[$method_name] = call_user_func($function, $params);
         }
-        return $resultset;
+        return $this->cached_results[$method_name];
     }
 
     /**
@@ -154,15 +153,12 @@ abstract class DataAccess_AbstractDaoObjectStruct extends stdClass implements Da
      * a subset of the attributes may be required to be bound to the query.
      *
      * @param $mask array|null a mask for the keys to return
-     *
      * @return array
-     *
-     * @throws ReflectionException
      */
     public function toArray( $mask = null ){
 
         $attributes = array();
-        $reflectionClass = new ReflectionObject( $this );
+        $reflectionClass = new ReflectionClass( $this );
         $publicProperties = $reflectionClass->getProperties( ReflectionProperty::IS_PUBLIC ) ;
         foreach( $publicProperties as $property ) {
             if ( !empty($mask) ) {
@@ -180,14 +176,13 @@ abstract class DataAccess_AbstractDaoObjectStruct extends stdClass implements Da
      * Compatibility with ArrayObject
      *
      * @return array
-     * @throws ReflectionException
      */
     public function getArrayCopy(){
         return $this->toArray();
     }
 
     public function count() {
-        $reflectionClass = new ReflectionObject( $this );
+        $reflectionClass = new ReflectionClass( $this );
         return count( $reflectionClass->getProperties( ReflectionProperty::IS_PUBLIC ) );
     }
 

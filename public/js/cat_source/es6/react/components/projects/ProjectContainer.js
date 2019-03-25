@@ -1,6 +1,7 @@
 
 let CSSTransitionGroup = React.addons.CSSTransitionGroup;
 let ManageConstants = require('../../constants/ManageConstants');
+let Job = require('./JobContainer').default;
 
 class ProjectContainer extends React.Component {
 
@@ -277,7 +278,7 @@ class ProjectContainer extends React.Component {
                 let lastAction = self.getLastJobAction(job.get('id'));
                 let isChunkOutsourced =  self.thereIsChunkOutsourced(job.get('id'));
 
-                let item = <JobContainer key={job.get('id') + "-" + i}
+                let item = <Job key={job.get('id') + "-" + i}
                                 job={job}
                                 index={index}
                                 project={self.props.project}
@@ -341,10 +342,10 @@ class ProjectContainer extends React.Component {
             </div>
 
             <div className="menu">
-                <div className="header"
-                     onClick={this.openAddMember.bind(this)}>
-                    <a href="#">Add New Member <i className="icon-plus3 icon right"/></a>
-                </div>
+                {/*<div className="header"*/}
+                     {/*onClick={this.openAddMember.bind(this)}>*/}
+                    {/*<a href="#">Add New Member <i className="icon-plus3 icon right"/></a>*/}
+                {/*</div>*/}
                 <div className="divider"></div>
                 <div className="ui icon search input">
                     <i className="icon-search icon"/>
@@ -361,14 +362,6 @@ class ProjectContainer extends React.Component {
                 </div>
             </div>
         </div>;
-    }
-
-    /**
-     * To add informations from the plugins
-     * @returns {string}
-     */
-    moreProjectInfo() {
-        return "";
     }
 
     getDropDownUsers() {
@@ -412,19 +405,6 @@ class ProjectContainer extends React.Component {
                     </div>;
         }
         return result;
-    }
-
-    getDueDate() {
-        if ( this.props.project.get('due_date') ) {
-            return <div className="eight wide left aligned column pad-top-0 pad-bottom-0">
-                    <div className="project-due-date">
-                    {"Due Date: " + moment(this.props.project.get('due_date')).format('LLLL')}
-                    </div>
-            </div> ;
-        }
-        return <div className="eight wide left aligned column pad-top-0 pad-bottom-0">
-
-        </div>;
     }
 
     componentDidUpdate() {
@@ -473,13 +453,12 @@ class ProjectContainer extends React.Component {
         //The list of jobs
         this.getJobsList(targetsLangs, jobsList, jobsLength);
 
-        let dueDateHtml = this.getDueDate();
 
         //Last Activity Log Action
         let lastAction;
         if (this.state.lastAction ) {
             let date = this.getLastActionDate();
-            lastAction = <div className="eight wide right aligned column pad-top-0 pad-bottom-0">
+            lastAction = <div className="sixteen wide right aligned column pad-top-0 pad-bottom-0">
                 <div className="activity-log">
                     <a href={activityLogUrl} target="_blank" className="right activity-log" title="Activity log">
                         <i> <span>Last action: {this.state.lastAction.action + ' on ' + date}</span><span> by {this.state.lastAction.first_name }</span></i>
@@ -487,7 +466,7 @@ class ProjectContainer extends React.Component {
                 </div>
             </div>;
         } else {
-            lastAction = <div className="eight wide right aligned column pad-top-0 pad-bottom-0">
+            lastAction = <div className="sixteen wide right aligned column pad-top-0 pad-bottom-0">
                 <div className="activity-log">
                     <a href={activityLogUrl} target="_blank" className="right activity-log" title="Activity log">
                         <i> <span>Created on: {this.props.project.get('jobs').first().get('formatted_create_date')}</span></i>
@@ -518,9 +497,9 @@ class ProjectContainer extends React.Component {
                     <div className="sixteen wide column">
                         <div className="project-header ui grid">
 
-                            <div className="nine wide column">
+                            <div className="eight wide column">
                                 <div className="ui stackable grid">
-                                    <div className="sixteen wide column project-title">
+                                    <div className="sixteen wide column">
                                         <div className="ui ribbon label">
                                             <div className="project-id" title="Project id">
                                                 {"(" + this.props.project.get('id') + ")"}
@@ -530,17 +509,15 @@ class ProjectContainer extends React.Component {
                                             </div>
                                                 {state}
                                         </div>
-                                        {this.moreProjectInfo()}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="seven wide right floated column pad-top-8">
+                            <div className="eight wide right floated column pad-top-8">
                                 <div className="ui mobile reversed stackable grid right aligned">
                                     <div className="sixteen wide right floated column">
 
                                         <div className="project-activity-icon">
-
                                             {dropDownTeams}
                                             {dropDownUsers}
                                             <div className="project-menu ui icon top right pointing dropdown circular button" title="Project menu"
@@ -563,7 +540,6 @@ class ProjectContainer extends React.Component {
                         </div>
 
                         <div className="project-footer ui grid">
-                            {dueDateHtml}
                             {lastAction}
                         </div>
 

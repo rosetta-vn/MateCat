@@ -21,11 +21,6 @@ class EditLog_EditLogSegmentStruct extends DataAccess_AbstractDaoObjectStruct im
     /**
      * @var string
      */
-    public $internal_id;
-
-    /**
-     * @var string
-     */
     public $translation;
 
     /**
@@ -114,16 +109,6 @@ class EditLog_EditLogSegmentStruct extends DataAccess_AbstractDaoObjectStruct im
      * @var bool
      */
     public $locked;
-
-    /**
-     * @var string
-     */
-    public $uid ;
-
-    /**
-     * @var string
-     */
-    public $email ;
 
     /**
      * @return float

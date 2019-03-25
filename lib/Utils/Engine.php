@@ -12,7 +12,7 @@ class Engine {
     /**
      * @param $id
      *
-     * @return Engines_AbstractEngine
+     * @return Engines_EngineInterface
      * @throws Exception
      */
     public static function getInstance( $id ) {

@@ -16,6 +16,8 @@
 class Upload {
 
     protected $dirUpload;
+    protected $acceptedMime = array();
+    protected $acceptedExtensions = array();
 
     protected $uploadToken;
 
@@ -40,7 +42,7 @@ class Upload {
     public function __construct( $uploadToken = null ) {
 
         if ( empty( $uploadToken ) ) {
-            $this->uploadToken = Utils::createToken( 'API' );
+            $this->uploadToken = Utils::create_guid( 'API' );
         } else {
             $this->uploadToken = $uploadToken;
         }
@@ -49,6 +51,22 @@ class Upload {
 
         if ( !file_exists( $this->dirUpload ) ) {
             mkdir( $this->dirUpload, 0775 );
+        }
+
+        //Mime White List, take them from ProjectManager.php
+        foreach ( INIT::$MIME_TYPES as $key=>$value ) {
+            foreach ( INIT::$SUPPORTED_FILE_TYPES as $key2 => $value2 ) {
+                if (count(array_intersect(array_keys($value2), array_values($value)))>0)
+                {
+                    array_push($this->acceptedMime, $key);
+                    break;
+                }
+            }
+        }
+
+        //flatten to one dimensional list of keys
+        foreach ( INIT::$SUPPORTED_FILE_TYPES as $extensions ) {
+            $this->acceptedExtensions += $extensions;
         }
 
     }
@@ -70,23 +88,7 @@ class Upload {
         }
 
         foreach ( $filesToUpload as $inputName => $file ) {
-
-            if( isset( $file[ 'tmp_name' ] ) && is_array( $file[ 'tmp_name' ] ) ){
-
-                $_file = [];
-                foreach ( $file[ 'tmp_name' ] as $index => $value ) {
-                    $_file[ 'tmp_name' ] = $file[ 'tmp_name' ][ $index ];
-                    $_file[ 'name' ]     = $file[ 'name' ][ $index ];
-                    $_file[ 'size' ]     = $file[ 'size' ][ $index ];
-                    $_file[ 'type' ]     = $file[ 'type' ][ $index ];
-                    $_file[ 'error' ]    = $file[ 'error' ][ $index ];
-                    $result->{$_file[ 'tmp_name' ]} = $this->_uploadFile( $_file );
-                }
-
-            } else {
-                $result->$inputName = $this->_uploadFile( $file );
-            }
-
+            $result->$inputName = $this->_uploadFile( $file );
         }
 
         return $result;
@@ -111,7 +113,7 @@ class Upload {
 
         $fileName    = $fileUp[ 'name' ];
         $fileTmpName = $fileUp[ 'tmp_name' ];
-        $fileType    = $fileUp[ 'type' ] = mime_content_type( $fileUp[ 'tmp_name' ] );
+        $fileType    = $fileUp[ 'type' ];
         $fileError   = $fileUp[ 'error' ];
         $fileSize    = $fileUp[ 'size' ];
 
@@ -173,53 +175,41 @@ class Upload {
 
         } else {
 
-            $out_filename = ZipArchiveExtended::getFileName( $fileName );
+            $right_mime=false;
+            if($fileType!==null){
 
-            if( $fileType !== null ){
-
-                if ( !$this->_isRightMime( $fileUp ) ) {
-                    $this->setObjectErrorOrThrowException(
-                            $fileUp,
-                            new Exception ( __METHOD__ . " -> Mime type Not Allowed. '" . $out_filename . "'" )
-                    );
+                if ( !$this->_isRightMime( $fileUp ) && (!isset($fileUp->error) || empty($fileUp->error) ) ) {
+                    $right_mime=false;
                 }
-
+                else{
+                    $right_mime=true;
+                }
             }
 
-            if ( !$this->_isRightExtension( $fileUp ) ) {
+
+            $out_filename = ZipArchiveExtended::getFileName( $fileName );
+            if ( !$this->_isRightExtension( $fileUp ) && ( !isset( $fileUp->error ) || empty( $fileUp->error ) ) && !$right_mime) {
                 $this->setObjectErrorOrThrowException(
                         $fileUp,
-                        new Exception ( __METHOD__ . " -> File Extension Not Allowed. '" . $out_filename . "'" )
+                        new Exception ( __METHOD__ . " -> File Extension and Mime type Not Allowed. '" . $out_filename . "'" )
                 );
 
             }
 
+
             // NOTE FOR ZIP FILES
             //This exception is already raised by ZipArchiveExtended when file is unzipped.
-            if ( $fileSize >= INIT::$MAX_UPLOAD_FILE_SIZE ) {
+            if ( $fileSize >= INIT::$MAX_UPLOAD_FILE_SIZE && (!isset($fileUp->error) || empty($fileUp->error) )) {
                 $this->setObjectErrorOrThrowException(
                         $fileUp,
                         new Exception ( __METHOD__ . " -> File Dimensions Not Allowed. '$out_filename'" )
                 );
             }
 
-            $mod_name = $this->fixFileName( $fileUp->name );
-
-            if( !Utils::isValidFileName( $mod_name ) ){
-                $this->setObjectErrorOrThrowException(
-                        $fileUp,
-                        new Exception ( __METHOD__ . " -> Invalid File Name '" . ZipArchiveExtended::getFileName( $fileUp->name ) ."'" )
-                );
-            }
-
-            //Exit on Error
-            if( !empty( $fileUp->error ) ){
-                @unlink( $fileTmpName );
-                return $fileUp;
-            }
-
             //All Right!!! GO!!!
-            if ( !copy( $fileTmpName, $this->dirUpload . DIRECTORY_SEPARATOR . $mod_name )) {
+            $mod_name = self::fixFileName( $fileName );
+
+            if ( (!isset($fileUp->error) || empty($fileUp->error) ) && !copy( $fileTmpName, $this->dirUpload . DIRECTORY_SEPARATOR . $mod_name )) {
                 $this->setObjectErrorOrThrowException(
                         $fileUp,
                         new Exception ( __METHOD__ . " -> Failed To Store File '$out_filename' On Server." )
@@ -231,7 +221,7 @@ class Upload {
             @unlink( $fileTmpName );
 
             // octal; changing mode
-            if ( !chmod( $this->dirUpload . DIRECTORY_SEPARATOR . $mod_name, 0664 ) ) {
+            if ( (!isset($fileUp->error) || empty($fileUp->error) ) && !chmod( $this->dirUpload . DIRECTORY_SEPARATOR . $mod_name, 0664 ) ) {
                 $this->setObjectErrorOrThrowException(
                         $fileUp,
                         new Exception ( __METHOD__ . " -> Failed To Set Permissions On File. '$out_filename'" )
@@ -248,18 +238,6 @@ class Upload {
 
     }
 
-    protected function upCountNameCallback( $matches ) {
-        $index = isset( $matches[ 1 ] ) ? intval( $matches[ 1 ] ) + 1 : 1;
-        $ext   = isset( $matches[ 2 ] ) ? $matches[ 2 ] : '';
-
-        return '_(' . $index . ')' . $ext;
-    }
-
-    protected function upCountName( $name ) {
-        return preg_replace_callback(
-                '/(?:(?:_\(([\d]+)\))?(\.[^.]+))?$/', [ $this, 'upCountNameCallback' ], $name, 1
-        );
-    }
 
     /**
      *
@@ -268,22 +246,17 @@ class Upload {
      * @param (string) $string
      *
      * @return string
-     * @throws Exception
      */
-    public function fixFileName( $stringName, $upCount = true ) {
+    public static function fixFileName( $string ) {
+        //Roberto: removed STRIP_HIGH flag. Non-latin filenames are supported.
+        $string = filter_var( $string, FILTER_SANITIZE_STRING, array( 'flags' => FILTER_FLAG_STRIP_LOW | FILTER_FLAG_NO_ENCODE_QUOTES) );
 
         //Fix Bug: Zip files, file names with contiguous whitespaces ( replaced with only one _ and not found inside the zip on download )
-        $string = preg_replace( '/\p{Zs}/u', chr(0x1A), $stringName ); // substitute whitespaces
-        $string = preg_replace( '/[^#\pL0-9,\.\-\=_&()\'\"\+\x1A]/u', '', $string ); //strips odd chars and preserve preceding placeholder
+        $string = preg_replace( '/\p{Zs}/u', chr(0x1A), $string ); // substitute whitespaces
+        $string = preg_replace( '/[^#\pL0-9,\.\-\=_&()\'\"\x1A]/u', '', $string ); //strips odd chars and preserve preceding placeholder
         $string = preg_replace( '/' . chr(0x1A) . '/', '_', $string ); //strips whitespace and odd chars
-        $string = filter_var( $string, FILTER_SANITIZE_STRING, array( 'flags' => FILTER_FLAG_STRIP_LOW | FILTER_FLAG_NO_ENCODE_QUOTES ) );
-
-        while ( is_file( $this->dirUpload . DIRECTORY_SEPARATOR . $string ) && $upCount ) {
-            $string = $this->upCountName( $string );
-        }
 
         return $string;
-
     }
 
     /**
@@ -295,32 +268,37 @@ class Upload {
      */
     protected function _isRightMime( $fileUp ) {
 
-        //Mime White List, take them from ProjectManager.php
-        foreach ( INIT::$MIME_TYPES as $key => $value ) {
-            if ( strpos( $key, $fileUp->type ) !== false ) {
+        //if empty accept ALL File Types
+        if ( empty ( $this->acceptedMime ) ) {
+            return true;
+        }
+
+        foreach ( $this->acceptedMime as $this_mime ) {
+            if ( strpos( $fileUp->type, $this_mime ) !== false ) {
                 return true;
             }
         }
 
         return false;
-
     }
 
     protected function _isRightExtension( $fileUp ) {
 
-        $acceptedExtensions = [];
-        foreach ( INIT::$SUPPORTED_FILE_TYPES as $key2 => $value2 ) {
-            $acceptedExtensions = array_unique( array_merge( $acceptedExtensions, array_keys( $value2 ) ) );
-        }
-
         $fileNameChunks = explode( ".", $fileUp->name );
 
+        foreach ( INIT::$SUPPORTED_FILE_TYPES as $key => $value ) {
+            foreach ( $value as $typeSupported => $value2 ) {
+                if ( property_exists($fileUp, 'type') && preg_match( '/\.' . $typeSupported . '$/i', $fileUp->type ) ) {
+                    return true;
+                }
+            }
+        }
         //first Check the extension
-        if ( array_search( strtolower( $fileNameChunks[ count( $fileNameChunks ) - 1 ] ), $acceptedExtensions ) !== false ) {
-            return true;
+        if ( !array_key_exists( strtolower( $fileNameChunks[ count( $fileNameChunks ) - 1 ] ), $this->acceptedExtensions ) ) {
+            return false;
         }
 
-        return false;
+        return true;
     }
 
     public static function formatExceptionMessage( $errorArray ) {

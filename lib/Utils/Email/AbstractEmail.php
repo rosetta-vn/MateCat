@@ -39,10 +39,6 @@ abstract class AbstractEmail
         $this->_template_path = INIT::$TEMPLATE_ROOT . '/Emails/' . $template ;
     }
 
-    protected function _setTemplateByPath( $path ) {
-        $this->_template_path = $path ;
-    }
-
     /**
      * TODO: implement some kind of hook to improve testability
      *
@@ -109,15 +105,6 @@ abstract class AbstractEmail
 
     }
 
-    protected function sendTo($address, $name){
-        $recipient = [ $address, $name ];
-
-        $this->doSend( $recipient, $this->title,
-                $this->_buildHTMLMessage(),
-                $this->_buildTxtMessage( $this->_buildMessageContent() )
-        );
-    }
-
     protected function doSend($address, $subject, $htmlBody, $altBody) {
         $mailConf = $this->_getDefaultMailConf();
 
@@ -139,12 +126,10 @@ abstract class AbstractEmail
      * @internal param $title
      */
     protected function _buildTxtMessage( $messageBody ){
-        $messageBody = preg_replace( "#<[/]*span[^>]*>#i", "", $messageBody );
-        $messageBody = preg_replace( "#<[/]*strong[^>]*>#i", "", $messageBody );
-        $messageBody = preg_replace( "#<[/]*(ol|ul|li)[^>]*>#i", "\t", $messageBody );
+        $messageBody = preg_replace( "#<[/]*span[^>]*>#i", "\r\n", $messageBody );
+        $messageBody = preg_replace( "#<[/]*(ol|ul|li)[^>]*>#i", "\r\n", $messageBody );
         $messageBody = preg_replace( "#<[/]*(p)[^>]*>#i", "", $messageBody );
         $messageBody = preg_replace( "#<a.*?href=[\"'](.*)[\"'][^>]*>(.*?)</a>#i", "$2 $1", $messageBody );
-        $messageBody = html_entity_decode( $messageBody );
         return preg_replace( "#<br[^>]*>#i", "\r\n", $messageBody );
     }
 

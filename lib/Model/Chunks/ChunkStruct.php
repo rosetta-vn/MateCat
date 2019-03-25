@@ -41,19 +41,11 @@ class Chunks_ChunkStruct extends Jobs_JobStruct {
     }
 
     public function getQualityOverall() {
-
-        $project = $this->getProject();
-        $featureSet = $project->getFeatures();
-
-        return CatUtils::getQualityOverallFromJobStruct( $this, $project, $featureSet ) ;
+        return CatUtils::getQualityOverallFromJobStruct( $this ) ;
     }
 
     public function getQualityInfo(){
-
-        $project = $this->getProject();
-        $featureSet = $project->getFeatures();
-
-        $qClass = CatUtils::getQualityInfoFromJobStruct( $this, $project, $featureSet );
+        $qClass = CatUtils::getQualityInfoFromJobStruct( $this );
 
         if ( 'LQA\ChunkReviewStruct' === get_class( $qClass ) ) {
             return null ;
@@ -66,9 +58,5 @@ class Chunks_ChunkStruct extends Jobs_JobStruct {
     public function getErrorsCount() {
         $dao = new \Translations\WarningDao() ;
         return $dao->getErrorsByChunk( $this );
-    }
-
-    public function hasSiblings() {
-        return count( $this->getJob()->getChunks() ) > 1 ;
     }
 }

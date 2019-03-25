@@ -52,6 +52,10 @@ $.extend(UI, {
             };
             UI.offlineNotification = APP.addNotification(notification);
 
+            setTimeout( function () {
+                $( '#messageBar .close' ).click();
+            }, 10000 );
+
             clearInterval( UI.currentConnectionCountdown );
             clearInterval( UI.checkingConnection );
             UI.currentConnectionCountdown = null;
@@ -211,20 +215,7 @@ $.extend(UI, {
         if (typeof UI.offlineNotification != 'undefined') {
             APP.removeNotification(this.offlineNotification);
         }
-    },
-    changeStatusOffline: function (sid) {
-        if($('#segment-' + sid + ' .editarea').text() != '') {
-
-            SegmentActions.removeClassToSegment(sid, 'status-draft');
-            SegmentActions.removeClassToSegment(sid, 'status-approved');
-            SegmentActions.removeClassToSegment(sid, 'status-new');
-            SegmentActions.removeClassToSegment(sid, 'status-rejected');
-            SegmentActions.removeClassToSegment(sid, 'status-fixed');
-            SegmentActions.removeClassToSegment(sid, 'status-rebutted');
-
-            SegmentActions.addClassToSegment(sid, 'status-translated');
-        }
-    },
+    }
 });
 
 $('html').on('mousedown', 'body[data-offline-mode="light-off"] .editor .actions .split', function(e) {

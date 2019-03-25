@@ -1,9 +1,6 @@
 <?php
 
 
-use Search\SearchModel;
-use Search\SearchQueryParamsStruct;
-
 class getSearchController extends ajaxController {
 
     private $job;
@@ -67,7 +64,7 @@ class getSearchController extends ajaxController {
                 break;
         }
 
-        $this->queryParams = new SearchQueryParamsStruct( [
+        $this->queryParams = array(
             'job'         => $this->job,
             'password'    => $this->password,
             'key'         => null,
@@ -77,28 +74,27 @@ class getSearchController extends ajaxController {
             'replacement' => $this->replace,
             'matchCase'   => $this->matchCase,
             'exactMatch'  => $this->exactMatch,
-        ] );
+        );
 
     }
 
-    /**
-     * @return mixed|void
-     * @throws Exception
-     */
     public function doAction() {
+        $this->result['token'] = $this->token;
+        if (empty($this->job)) {
+            $this->result['errors'][] = array("code" => -2, "message" => "missing id job");
+            return;
+        }
+        //get Job Info
+        $this->job_data = getJobData( (int) $this->job, $this->password );
 
-        $this->result[ 'token' ] = $this->token;
-
-        if ( empty( $this->job ) ) {
-            $this->result[ 'errors' ][] = [ "code" => -2, "message" => "missing id job" ];
+        $pCheck = new AjaxPasswordCheck();
+        //check for Password correctness
+        if (!$pCheck->grantJobAccessByJobData($this->job_data, $this->password)) {
+            $this->result['errors'][] = array("code" => -10, "message" => "wrong password");
             return;
         }
 
-        //get Job Info
-        $this->job_data = Jobs_JobDao::getByIdAndPassword( (int)$this->job, $this->password );
-        $this->featureSet->loadForProject( $this->job_data->getProject() );
-
-        switch ( $this->function ) {
+        switch ($this->function) {
             case 'find':
                 $this->doSearch();
                 break;
@@ -106,57 +102,49 @@ class getSearchController extends ajaxController {
                 $this->doReplaceAll();
                 break;
             default :
-                $this->result[ 'errors' ][] = [ "code" => -11, "message" => "unknown  function. Use find or replace" ];
+                $this->result['errors'][] = array("code" => -11, "message" => "unknown  function. Use find or replace");
                 return;
         }
     }
 
     private function doSearch() {
 
-        if ( !empty( $this->source ) and !empty( $this->target ) ) {
-            $this->queryParams[ 'key' ] = 'coupled';
-            $this->queryParams[ 'src' ] = $this->source;
-            $this->queryParams[ 'trg' ] = $this->target;
-        } elseif ( !empty( $this->source ) ) {
-            $this->queryParams[ 'key' ] = 'source';
-            $this->queryParams[ 'src' ] = $this->source;
-        } elseif ( !empty( $this->target ) ) {
-            $this->queryParams[ 'key' ] = 'target';
-            $this->queryParams[ 'trg' ] = $this->target;
-        } elseif ( empty( $this->source ) and empty( $this->target ) ) {
-            $this->queryParams[ 'key' ] = 'status_only';
+        if (!empty($this->source) and !empty($this->target)) {
+            $this->queryParams['key'] = 'coupled';
+            $this->queryParams['src'] =  $this->source;
+            $this->queryParams['trg'] =  $this->target;
+        } else if (!empty($this->source)) {
+            $this->queryParams['key'] = 'source';
+            $this->queryParams['src'] = $this->source;
+        } else if (!empty($this->target)) {
+            $this->queryParams['key'] = 'target';
+            $this->queryParams['trg'] =  $this->target;
+        } elseif( empty($this->source) and empty($this->target) ){
+            $this->queryParams['key'] = 'status_only';
         }
 
-        $searchModel = new SearchModel( $this->queryParams );
+        $res = doSearchQuery( $this->queryParams );
 
-        try {
-            $res = $searchModel->search();
-        } catch( Exception $e ){
+        if (is_numeric($res) and $res < 0) {
             $this->result['errors'][] = array("code" => -1000, "message" => "internal error: see the log");
             return;
         }
-
         $this->result['total']    = $res['count'];
-        $this->result['segments'] = $res['sid_list'];
-
+        $this->result['segments'] = $res['sidlist'];
     }
 
-    /**
-     * @throws Exception
-     */
     private function doReplaceAll(){
+        $this->queryParams['trg'] =  $this->target;
 
-        $Filter = \SubFiltering\Filter::getInstance( $this->featureSet );
-
-        $this->queryParams[ 'trg' ]         = $Filter->fromLayer2ToLayer0( $this->target );
-        $this->queryParams[ 'src' ]         = $Filter->fromLayer2ToLayer0( $this->source );
-        $this->queryParams[ 'replacement' ] = $Filter->fromLayer2ToLayer0( $this->replace );
+        $this->queryParams['trg'] =  CatUtils::view2rawxliff( $this->target );
+        $this->queryParams['replacement'] =  CatUtils::view2rawxliff( $this->replace ) ;
 
         /**
          * Leave the FatalErrorHandler catch the Exception, so the message with Contact Support will be sent
          * @throws Exception
          */
-        ( new SearchModel( $this->queryParams ) )->replaceAll();
+        doReplaceAll( $this->queryParams );
+
 
     }
 

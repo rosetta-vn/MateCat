@@ -15,19 +15,12 @@ class FilterDefinition {
      * @var array
      */
     private $filter_data;
-
-    private $custom_conditions_sql  = [] ;
-    private $custom_conditions_data = [] ;
-
     /**
-     * @param array $filter_data
+     * @param array $fitler_data
      */
+
     public function __construct( array $filter_data ) {
         $this->filter_data = $filter_data;
-    }
-
-    public function isRevision(){
-        return !empty( $this->filter_data['revision'] ) && $this->filter_data['revision'] == 1;
     }
 
     public function isSampled() {
@@ -47,7 +40,7 @@ class FilterDefinition {
     }
 
     public function sampleSize() {
-        return @$this->filter_data['sample']['size'];
+        return $this->filter_data['sample']['size'];
     }
 
     public function getSegmentStatus() {
@@ -56,23 +49,6 @@ class FilterDefinition {
 
     public function isValid() {
         return ( $this->isSampled() || $this->getSegmentStatus() != '' ) ;
-    }
-
-    public function setCustomCondition( $condition, $data ) {
-        $this->custom_conditions_sql [] = $condition ;
-        array_merge( $this->custom_conditions_data, $data) ;
-    }
-
-    public function hasCustomCondition() {
-        return !empty( $this->custom_conditions_sql );
-    }
-
-    public function getCustomConditionSQL() {
-        return implode(" AND ", $this->custom_conditions_sql ) ;
-    }
-
-    public function getCustomConditionData() {
-        return $this->custom_conditions_data ;
     }
 
 }

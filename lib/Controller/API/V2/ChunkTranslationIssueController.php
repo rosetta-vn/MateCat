@@ -9,44 +9,31 @@
 namespace API\V2;
 
 use API\V2\Json\SegmentTranslationIssue as JsonFormatter;
-use API\V2\Validators\ChunkPasswordValidator;
-use Chunks_ChunkStruct;
 
 class ChunkTranslationIssueController extends KleinController {
 
     /**
-     * @var Chunks_ChunkStruct
+     * @var Validators\ChunkPasswordValidator
      */
-    protected $chunk;
-
-    /**
-     * @param Chunks_ChunkStruct $chunk
-     *
-     * @return $this
-     */
-    public function setChunk( $chunk ) {
-        $this->chunk = $chunk;
-        return $this;
-    }
+    private $validator;
 
     public function index() {
 
         // find all issues by chunk and return the json representation.
-        $result = \LQA\EntryDao::findAllByChunk( $this->chunk );
+        $result = \LQA\EntryDao::findAllByChunk( $this->validator->getChunk() );
 
         $json     = new JsonFormatter();
-        $rendered = $json->render( $result );
+        $rendered = $json->renderArray( $result );
 
         $this->response->json( array( 'issues' => $rendered ) );
     }
 
     protected function afterConstruct() {
-        $Validator = new ChunkPasswordValidator( $this ) ;
-        $Controller = $this;
-        $Validator->onSuccess( function () use ( $Validator, $Controller ) {
-            $Controller->setChunk( $Validator->getChunk() );
-        } );
-        $this->appendValidator( $Validator );
+        $this->validator = new Validators\ChunkPasswordValidator( $this->request );
+    }
+
+    protected function validateRequest() {
+        $this->validator->validate();
     }
 
 }

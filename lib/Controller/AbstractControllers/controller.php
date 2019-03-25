@@ -6,56 +6,29 @@
  *
  */
 
-use AbstractControllers\IController;
-
 /**
  * Abstract Class controller
  */
-abstract class controller implements IController {
+abstract class controller {
 
     protected $model;
     protected $userRole = TmKeyManagement_Filter::ROLE_TRANSLATOR;
 
     /**
      * @var Users_UserStruct
+     * @deprecated Use getUser method instead
      */
-    protected $user;
+    protected $logged_user;
 
     protected $uid;
     protected $userIsLogged = false;
-
-    /**
-     * @var FeatureSet
-     */
-    protected $featureSet;
-
-    /**
-     * @return FeatureSet
-     */
-    public function getFeatureSet() {
-        return $this->featureSet;
-    }
-
-    /**
-     * @param FeatureSet $featuresSet
-     *
-     * @return $this
-     */
-    public function setFeatureSet( FeatureSet $featuresSet ) {
-        $this->featureSet = $featuresSet;
-
-        return $this;
-    }
+    protected $userMail;
 
     /**
      * @return Users_UserStruct
      */
-    public function getUser() {
-        return $this->user;
-    }
-
-    public function userIsLogged(){
-        return $this->userIsLogged;
+    public function getLoggedUser() {
+        return $this->logged_user;
     }
 
     /**
@@ -76,8 +49,11 @@ abstract class controller implements IController {
             }
 
             $_REQUEST[ 'action' ][0] = strtoupper( $_REQUEST[ 'action' ][ 0 ] );
-            $_REQUEST[ 'action' ] = preg_replace_callback( '/_([a-z])/', function ( $c ) { return strtoupper( $c[ 1 ] ); }, $_REQUEST[ 'action' ] );
 
+            //PHP 5.2 compatibility, don't use a lambda function
+            $func                 = create_function( '$c', 'return strtoupper($c[1]);' );
+
+            $_REQUEST[ 'action' ] = preg_replace_callback( '/_([a-z])/', $func, $_REQUEST[ 'action' ] );
             $_POST[ 'action' ]    = $_REQUEST[ 'action' ];
 
             //set the log to the API Log
@@ -87,8 +63,6 @@ abstract class controller implements IController {
 
         //Default :  catController
         $action = ( isset( $_POST[ 'action' ] ) ) ? $_POST[ 'action' ] : ( isset( $_GET[ 'action' ] ) ? $_GET[ 'action' ] : 'cat' );
-        $actionList = explode( '\\', $action ); // do not accept namespaces ( Security issue: directory traversal )
-        $action = end( $actionList ); // do not accept namespaces ( Security issue: directory traversal )
         $className = $action . "Controller";
 
         //Put here all actions we want to be performed by ALL controllers
@@ -148,25 +122,21 @@ abstract class controller implements IController {
 
     public function setUserCredentials() {
 
-        $this->user        = new Users_UserStruct();
-        $this->user->uid   = ( isset( $_SESSION[ 'uid' ] ) && !empty( $_SESSION[ 'uid' ] ) ? $_SESSION[ 'uid' ] : null );
-        $this->user->email = ( isset( $_SESSION[ 'cid' ] ) && !empty( $_SESSION[ 'cid' ] ) ? $_SESSION[ 'cid' ] : null );
+        $this->logged_user        = new Users_UserStruct();
+        $this->logged_user->uid   = ( isset( $_SESSION[ 'uid' ] ) && !empty( $_SESSION[ 'uid' ] ) ? $_SESSION[ 'uid' ] : null );
+        $this->logged_user->email = ( isset( $_SESSION[ 'cid' ] ) && !empty( $_SESSION[ 'cid' ] ) ? $_SESSION[ 'cid' ] : null );
 
         try {
-
-            $userDao    = new Users_UserDao( Database::obtain() );
-            $loggedUser = $userDao->setCacheTTL( 3600 )->read( $this->user )[ 0 ]; // one hour cache
-            $this->userIsLogged = (
-                    !empty( $loggedUser->uid ) &&
-                    !empty( $loggedUser->email ) &&
-                    !empty( $loggedUser->first_name ) &&
-                    !empty( $loggedUser->last_name )
-            );
-
+            $userDao           = new Users_UserDao( Database::obtain() );
+            $loggedUser = $userDao->setCacheTTL( 3600 )->read( $this->logged_user )[ 0 ]; // one hour cache
+            $this->logged_user = ( !empty( $loggedUser ) ? $loggedUser : $this->logged_user );
         } catch ( Exception $e ) {
             Log::doLog( 'User not logged.' );
         }
-        $this->user = ( $this->userIsLogged ? $loggedUser : $this->user );
+
+        $this->userIsLogged = ( !empty( $this->logged_user->email ) );
+        $this->uid          = $this->logged_user->getUid();
+        $this->userMail     = $this->logged_user->getEmail();
 
     }
 
@@ -182,27 +152,6 @@ abstract class controller implements IController {
                 $_SESSION[ 'uid' ] = $username_from_cookie['uid'];
             }
         }
-    }
-
-    public function readLoginInfo( $close = true ) {
-        //Warning, sessions enabled, disable them after check, $_SESSION is in read only mode after disable
-        self::sessionStart();
-        $this->_setUserFromAuthCookie();
-        $this->setUserCredentials();
-
-        if ( $close ) {
-            self::disableSessions();
-        }
-
-    }
-
-    /**
-     * isLoggedIn
-     *
-     * @return bool
-     */
-    public function isLoggedIn() {
-        return $this->userIsLogged;
     }
 
 }

@@ -16,48 +16,45 @@ class Revise_JobQA {
     /**
      * @var ErrorCount_Struct
      */
-    private        $job_error_totals;
+    private $job_error_totals;
     private static $error_info;
-    private        $reviseClass;
 
-    public function __construct( $id_job, $password_job, $job_words, Constants_Revise $reviseClass ) {
+    public function __construct( $id_job, $password_job, $job_words ) {
         $this->job_id       = $id_job;
         $this->job_password = $password_job;
         $this->job_words    = $job_words;
 
-        $this->reviseClass = $reviseClass;
-
         self::$error_info = array(
                 'typing'      => array(
-                        'maxErr'     => $reviseClass::MAX_TYPING,
+                        'maxErr'     => Constants_Revise::MAX_TYPING,
                         'acceptance' => null,
                         'foundErr'   => null,
                         'vote'       => null,
                         'textVote'   => null,
                 ),
                 'translation' => array(
-                        'maxErr'     => $reviseClass::MAX_TRANSLATION,
+                        'maxErr'     => Constants_Revise::MAX_TRANSLATION,
                         'acceptance' => null,
                         'foundErr'   => null,
                         'vote'       => null,
                         'textVote'   => null,
                 ),
                 'terminology' => array(
-                        'maxErr'     => $reviseClass::MAX_TERMINOLOGY,
+                        'maxErr'     => Constants_Revise::MAX_TERMINOLOGY,
                         'acceptance' => null,
                         'foundErr'   => null,
                         'vote'       => null,
                         'textVote'   => null,
                 ),
                 'language'    => array(
-                        'maxErr'     => $reviseClass::MAX_QUALITY,
+                        'maxErr'     => Constants_Revise::MAX_QUALITY,
                         'acceptance' => null,
                         'foundErr'   => null,
                         'vote'       => null,
                         'textVote'   => null,
                 ),
                 'style'       => array(
-                        'maxErr'     => $reviseClass::MAX_STYLE,
+                        'maxErr'     => Constants_Revise::MAX_STYLE,
                         'acceptance' => null,
                         'foundErr'   => null,
                         'vote'       => null,
@@ -101,14 +98,13 @@ class Revise_JobQA {
      * Get the QA value for the job in a client readable structure
      *
      * @return array
-     * @throws ReflectionException
      */
     public function getQaData() {
         if ( empty( $this->job_error_totals ) ) {
             throw new BadFunctionCallException( "You must call retrieveJobErrorTotals first" );
         }
 
-        $reflect = new ReflectionClass( $this->reviseClass );
+        $reflect = new ReflectionClass( 'Constants_Revise' );
 
         $qaData = array();
 
@@ -116,10 +112,8 @@ class Revise_JobQA {
             $fieldName = $constants = $reflect->getConstant( "ERR_" . strtoupper( $field ) );
             $qaData[]    = array(
                     'type'    => $fieldName,
-                    'field' => $field,
                     'allowed' => round( $info[ 'acceptance' ], 1 , PHP_ROUND_HALF_UP ),
                     'found'   => $info[ 'foundErr' ],
-                    'founds' => ['minor' => $info['foundErr_min'], 'major' => $info['foundErr_maj']],
                     'vote'    => $info[ 'textVote' ]
             );
         }
@@ -136,7 +130,7 @@ class Revise_JobQA {
             /*
              * maxErr is the number of Major Tolerated Errors, Major counts as 1
              */
-            self::$error_info[ $field ][ 'acceptance' ] = ( $this->job_words / constant( get_class( $this->reviseClass ) . "::WORD_INTERVAL" ) ) * self::$error_info[ $field ][ 'maxErr' ];
+            self::$error_info[ $field ][ 'acceptance' ] = ( $this->job_words / Constants_Revise::WORD_INTERVAL ) * self::$error_info[ $field ][ 'maxErr' ];
         }
     }
 
@@ -151,21 +145,17 @@ class Revise_JobQA {
             /**
              * @var $errNumber int
              */
-            $found_min = $this->job_error_totals->{$methodName . "Min"}();
-            $found_maj = $this->job_error_totals->{$methodName . "Maj"}();
-            $errNumberMin = $found_min * constant( get_class( $this->reviseClass ) . "::SERV_VALUE_MINOR" );
-            $errNumberMaj = $found_maj * constant( get_class( $this->reviseClass ) . "::SERV_VALUE_MAJOR" );
+            $errNumberMin = $this->job_error_totals->{$methodName . "Min"}() * Constants_Revise::SERV_VALUE_MINOR;
+            $errNumberMaj = $this->job_error_totals->{$methodName . "Maj"}() * Constants_Revise::SERV_VALUE_MAJOR;
             $errNumber    = $errNumberMin + $errNumberMaj;
 
             self::$error_info[ $field ][ 'foundErr' ] = $errNumber;
-            self::$error_info[ $field ][ 'foundErr_min' ] = $found_min;
-            self::$error_info[ $field ][ 'foundErr_maj' ] = $found_maj;
             self::$error_info[ $field ][ 'vote' ]     = $errNumber / (
                     self::$error_info[ $field ][ 'acceptance' ] == 0
                             ? 1
                             : self::$error_info[ $field ][ 'acceptance' ]
                     );
-            self::$error_info[ $field ][ 'textVote' ] = $this->vote2text( self::$error_info[ $field ][ 'vote' ] );
+            self::$error_info[ $field ][ 'textVote' ] = self::vote2text( self::$error_info[ $field ][ 'vote' ] );
         }
     }
 
@@ -188,7 +178,7 @@ class Revise_JobQA {
 
         $this->job_vote = array(
                 'avg'              => $avgMark,
-                'minText'          => $this->vote2text( $avgMark ),
+                'minText'          => self::vote2text( $avgMark ),
                 'equivalent_class' => self::vote2EquivalentScore( $avgMark )
         );
 
@@ -199,20 +189,20 @@ class Revise_JobQA {
         return $this->job_vote;
     }
 
-    private function vote2text( $vote ) {
+    private static function vote2text( $vote ) {
 
         if ( $vote >= 0.94 ) {
-            return constant( get_class( $this->reviseClass ) . "::VOTE_FAIL" );
+            return Constants_Revise::VOTE_FAIL;
         } elseif ( $vote >= 0.7 ) {
-            return constant( get_class( $this->reviseClass ) . "::VOTE_POOR" );
+            return Constants_Revise::VOTE_POOR;
         } elseif ( $vote >= 0.46 ) {
-            return constant( get_class( $this->reviseClass ) . "::VOTE_ACCEPTABLE" );
+            return Constants_Revise::VOTE_ACCEPTABLE;
         } elseif ( $vote >= 0.22 ) {
-            return constant( get_class( $this->reviseClass ) . "::VOTE_GOOD" );
+            return Constants_Revise::VOTE_GOOD;
         } elseif ( $vote >= 0.10 ) {
-            return constant( get_class( $this->reviseClass ) . "::VOTE_VERY_GOOD" );
+            return Constants_Revise::VOTE_VERY_GOOD;
         } elseif ( $vote >= 0 ) {
-            return constant( get_class( $this->reviseClass ) . "::VOTE_EXCELLENT" );
+            return Constants_Revise::VOTE_EXCELLENT;
         } else {
             return "";
         }

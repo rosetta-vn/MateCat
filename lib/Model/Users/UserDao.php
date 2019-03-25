@@ -11,8 +11,8 @@ class Users_UserDao extends DataAccess_AbstractDao {
     const TABLE = "users";
     const STRUCT_TYPE = "Users_UserStruct";
 
-    protected static $auto_increment_field = array('uid');
-    protected static $primary_keys         = array('uid');
+    protected static $auto_increment_fields = array('uid');
+    protected static $primary_keys = array('uid');
 
     protected static $_query_user_by_uid = " SELECT * FROM users WHERE uid = :uid ";
     protected static $_query_user_by_email = " SELECT * FROM users WHERE email = :email ";
@@ -26,45 +26,30 @@ class Users_UserDao extends DataAccess_AbstractDao {
         WHERE jobs.id = :job_id
         LIMIT 1 ";
 
-    /**
-     * @param $uids_array
-     *
-     * @return Users_UserStruct[]
-     */
     public function getByUids( $uids_array ) {
-
-        $sanitized_array = [];
-
+        $sanitized_array = array();
         foreach ( $uids_array as $k => $v ) {
             if ( !is_numeric( $v ) ) {
-                $sanitized_array[] = (int)$v[ 'uid' ];
+                array_push( $sanitized_array, ( (int)$v[ 'uid' ] ) );
             } else {
-                $sanitized_array[] = (int)$v;
+                array_push( $sanitized_array, ( (int)$v ) );
             }
         }
 
         if ( empty( $sanitized_array ) ) {
-            return [];
+            return array();
         }
 
         $query = "SELECT * FROM " . self::TABLE .
-                " WHERE uid IN ( " . str_repeat( '?,', count( $sanitized_array ) - 1 ) . '?' . " ) ";
+                " WHERE uid IN ( " . str_repeat( '?,', count( $sanitized_array ) - 1) . '?' . " ) ";
 
-        $stmt = $this->_getStatementForCache( $query );
+        $stmt = $this->setCacheTTL( 60 * 10 )->_getStatementForCache( $query );
 
-        $__resultSet = $this->_fetchObject(
+        return $this->_fetchObject(
                 $stmt,
                 new Users_UserStruct(),
                 $sanitized_array
         );
-
-        $resultSet = [];
-        foreach( $__resultSet as $user ){
-            $resultSet[ $user->uid ] = $user;
-        }
-
-        return $resultSet;
-
     }
 
     /**
@@ -152,30 +137,17 @@ class Users_UserDao extends DataAccess_AbstractDao {
     }
 
     /**
-     * @param $email
-     *
-     * @return bool|int
-     */
-    public function destroyCacheByEmail( $email ){
-        $stmt = $this->_getStatementForCache( self::$_query_user_by_email );
-        $userQuery = new Users_UserStruct();
-        $userQuery->email = $email;
-        return $this->_destroyObjectCache( $stmt, [ 'email' => $userQuery->email ] );
-    }
-
-
-    /**
      *
      * This method is not static and used also to cache at Redis level the values for this Job
      *
      * Use when only the metadata are needed
      *
-     * @param Users_UserStruct|DataAccess_IDaoStruct $UserQuery
+     * @param Users_UserStruct $UserQuery
      *
      * @return DataAccess_IDaoStruct|DataAccess_IDaoStruct[]
      * @throws Exception
      */
-    public function read( DataAccess_IDaoStruct $UserQuery ) {
+    public function read( Users_UserStruct $UserQuery ) {
 
         $UserQuery = $this->sanitize( $UserQuery );
 

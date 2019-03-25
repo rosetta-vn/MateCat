@@ -19,34 +19,17 @@ abstract class Engines_Results_AbstractResponse {
 
     protected $_rawResponse = "";
 
-    /**
-     * @var FeatureSet
-     */
-    protected $featureSet;
-
-    public static function getInstance( $result, FeatureSet $featureSet = null ){
+    public static function getInstance( $result ){
 
         $class = get_called_class(); // late static binding, note: php >= 5.3
-
-        /**
-         * @var Engines_Results_AbstractResponse $instance
-         */
         $instance = new $class( $result );
 
         if ( is_array( $result ) and array_key_exists( "error", $result ) ) {
             $instance->error = new Engines_Results_ErrorMatches( $result[ 'error' ] );
         }
 
-        if( $featureSet !== null ){
-            $instance->featureSet( $featureSet );
-        }
-
         return $instance;
 
-    }
-
-    public function featureSet( FeatureSet $featureSet ){
-        $this->featureSet = $featureSet;
     }
 
     /**
@@ -58,9 +41,7 @@ abstract class Engines_Results_AbstractResponse {
      * a subset of the attributes may be required to be bound to the query.
      *
      * @param $mask array|null a mask for the keys to return
-     *
      * @return array
-     * @throws ReflectionException
      */
     public function toArray( $mask = null ){
 

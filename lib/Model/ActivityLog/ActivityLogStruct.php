@@ -42,8 +42,7 @@ class ActivityLogStruct extends DataAccess_AbstractDaoSilentStruct implements Da
             self::ACCESS_REVISE_SUMMARY_PAGE  => "Access to the Revise Summary page",
 
         /* OTHERS */
-            self::PROJECT_CREATED             => "Project created.",
-            self::JOB_UNARCHIVED              => "Job unarchived.",
+            self::PROJECT_CREATED             => "Project created."
 
     );
 
@@ -73,7 +72,6 @@ class ActivityLogStruct extends DataAccess_AbstractDaoSilentStruct implements Da
 
     /* OTHERS */
     const PROJECT_CREATED            = 18;
-    const JOB_UNARCHIVED             = 19;
 
     protected $cached_results = array();
 

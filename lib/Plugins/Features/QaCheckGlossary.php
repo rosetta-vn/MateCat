@@ -5,7 +5,6 @@ namespace Features;
 use TaskRunner\Commons\QueueElement;
 use Translations\WarningModel;
 use Translations\WarningStruct;
-use QA;
 
 use Translations\WarningDao ;
 
@@ -14,12 +13,7 @@ use WorkerClient ;
 
 class QaCheckGlossary extends BaseFeature {
 
-    const FEATURE_CODE = 'qa_check_glossary';
-
     const GLOSSARY_SCOPE = 'glossary';
-
-    const GLOASSARY_CATEGORY = "GLOSSARY";
-
 
     public function postTMSegmentAnalyzed( $params ) {
         $tm_data = $params['tm_data'];
@@ -74,34 +68,27 @@ class QaCheckGlossary extends BaseFeature {
     }
 
 
-    public function filterGlobalWarnings( $result, $params ) {
+    public function filterGlobalWarnings($data, $params) {
 
         /** @var  $chunk \Chunks_ChunkStruct */
-        $chunk = $params[ 'chunk' ];
+        $chunk = $params['chunk'];
 
         $warnings = WarningDao::findByChunkAndScope( $chunk, self::GLOSSARY_SCOPE );
 
-        $data_elements = [];
+        $data_elements = array() ;
 
-        $segments_ids = [];
-
-        if ( count( $warnings ) > 0 ) {
-            foreach ( $warnings as $element ) {
-                $segments_ids[]  = $element->id_segment;
-                $data_elements[] = [
+        if ( count($warnings) > 0 ) {
+            $data_elements = array_map(function(WarningStruct $element) {
+                return array(
                         'id_segment' => $element->id_segment,
-                        'severity'   => $element->severity,
-                        'data'       => json_decode( $element->data, true )
-                ];
-            }
+                        'severity' => $element->severity,
+                        'data' => json_decode( $element->data, TRUE )
+                );
+            }, $warnings);
         }
 
-        sort($segments_ids);
-        $segments_ids = array_values(array_unique($segments_ids));
-        $result[ 'data' ][ self::GLOSSARY_SCOPE ]                                     = [ 'matches' => $data_elements ];
-        $result[ 'details' ][ QA::ERROR ][ 'Categories' ][ self::GLOASSARY_CATEGORY ] = $segments_ids;
-
-        return $result;
+        $data[self::GLOSSARY_SCOPE] = array('matches' => $data_elements ) ;
+        return $data ;
 
     }
 }

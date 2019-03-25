@@ -1,7 +1,4 @@
-<?php
-
-use SubFiltering\Filters\LtGtEncode;
-use SubFiltering\Filters\RestoreXliffTagsForView;
+<?php include_once INIT::$UTILS_ROOT . '/Log.php';
 
 /**
  * Class errObject
@@ -118,11 +115,6 @@ class errObject {
 class QA {
 
     /**
-     * @var FeatureSet
-     */
-    protected $featureSet;
-
-    /**
      * RAW Source string segment for comparison
      *
      * @var string
@@ -219,7 +211,6 @@ class QA {
     const ERR_GLOSSARY_MISMATCH = 26;
     const ERR_SPECIAL_ENTITY_MISMATCH = 27;
     const ERR_EUROSIGN_MISMATCH = 28;
-    const ERR_UNCLOSED_G_TAG = 29;
 
     const ERR_TAG_MISMATCH = 1000;
 
@@ -283,7 +274,6 @@ class QA {
             25   => 'Star sign mismatch',
             26   => 'Glossary mismatch',
             27   => 'Special char entity mismatch',
-            29   => 'File-breaking tag issue',
 
             /*
              * grouping
@@ -329,25 +319,8 @@ class QA {
          *  2 =>  'bad source xml',
          *  3 =>  'bad target xml',
          */
-        29 => "Should be < g ... > ... < /g >",
-        1000 => "Press the < key to add tags or delete extra tags."
-
+        1000 => "Press the < key to add tags."
     );
-
-    /**
-     * <code>
-     * $errorMap = [
-     *      'code'  => (int),
-     *      'debug' => (string),
-     *      'tip'   => (string)
-     * ]
-     * </code>
-     * @param array $errorMap
-     */
-    public function addCustomError( Array $errorMap ){
-        $this->_errorMap[ $errorMap[ 'code' ] ] = $errorMap[ 'debug' ];
-        $this->_tipMap[ $errorMap[ 'code' ] ] = $errorMap[ 'tip' ];
-    }
 
     protected static $asciiPlaceHoldMap = array(
             '00' => array( 'symbol' => 'NULL', 'placeHold' => '##$_00$##', 'numeral' => 0x00 ),
@@ -437,7 +410,6 @@ class QA {
             case self::ERR_COUNT:
             case self::ERR_SOURCE:
             case self::ERR_TARGET:
-            case self::ERR_TAG_MISMATCH:
                 $this->exceptionList[ self::ERROR ][] = errObject::get( array(
                         'outcome' => self::ERR_TAG_MISMATCH,
                         'debug'   => $this->_errorMap[ self::ERR_TAG_MISMATCH ],
@@ -452,7 +424,6 @@ class QA {
                 ) );
                 break;
             case self::ERR_UNCLOSED_X_TAG:
-            case self::ERR_UNCLOSED_G_TAG:
                 $this->exceptionList[ self::ERROR ][] = errObject::get( array(
                         'outcome' => $errCode,
                         'debug'   => $this->_errorMap[ $errCode ],
@@ -500,7 +471,6 @@ class QA {
             case self::ERR_TAB_MISMATCH :
             case self::ERR_STARSIGN_MISMATCH :
             case self::ERR_SPECIAL_ENTITY_MISMATCH :
-            case self::ERR_SYMBOL_MISMATCH :
                 $this->exceptionList[ self::INFO ][] = errObject::get( array(
                         'outcome' => self::ERR_SYMBOL_MISMATCH,
                         'debug'   => $this->_errorMap[ self::ERR_SYMBOL_MISMATCH ],
@@ -556,13 +526,6 @@ class QA {
     }
 
     /**
-     * @return array
-     */
-    public function getEexeptionList(){
-        return $this->exceptionList;
-    }
-
-    /**
      * Check for found Errors
      *
      * @return bool
@@ -613,22 +576,6 @@ class QA {
      */
     public function getWarningsJSON() {
         return json_encode( $this->checkErrorNone( self::WARNING, true ) );
-    }
-
-    /**
-     * Get an error list in JSON string format and returns an instance of a mock QA with filled errors
-     *
-     * @param $jsonString
-     *
-     * @return array
-     */
-    public static function JSONtoExceptionList( $jsonString ){
-        $that = new static( null, null );
-        $jsonValue = json_decode( $jsonString, true );
-        array_walk( $jsonValue, function( $errArray, $key ) use ( $that ){
-            $that->_addError( $errArray[ 'outcome' ] );
-        });
-        return $that->exceptionList;
     }
 
     /**
@@ -861,45 +808,9 @@ class QA {
     }
 
     /**
-     * @param FeatureSet $featureSet
-     *
-     * @return $this
-     */
-    public function setFeatureSet( FeatureSet $featureSet ) {
-        $this->featureSet = $featureSet;
-
-        return $this;
-    }
-
-    /**
-     * @return FeatureSet
-     * @throws Exception
-     */
-    protected function getFeatureSet() {
-        if( $this->featureSet == null ){
-            $this->featureSet = new FeatureSet();
-        }
-        return $this->featureSet;
-    }
-
-    /**
-     * @return string
-     */
-    public function getSourceSeg() {
-        return $this->source_seg;
-    }
-
-    /**
-     * @return string
-     */
-    public function getTargetSeg() {
-        return $this->target_seg;
-    }
-
-    /**
      * After initialization by Constructor, the dom is parsed and map structures are built
      *
-     * @throws Exception|DOMException
+     * @throws Exception
      */
     protected function _prepareDOMStructures() {
 
@@ -1105,18 +1016,12 @@ class QA {
 
             $errorList = libxml_get_errors();
             foreach ( $errorList as $error ) {
-                if ( $this->checkUnclosedTag( "x", $xmlString, $error ) ) {
-                    $this->_addError( self::ERR_UNCLOSED_X_TAG );
-                    return $dom;
-                }
-
-                if ( $this->checkUnclosedTag( "g", $xmlString, $error ) ) {
-                    $this->_addError( self::ERR_UNCLOSED_G_TAG );
-                    return $dom;
+                if ( $error->code == 76 /* libxml _xmlerror XML_ERR_TAG_NOT_FINISHED */ ) {
+                    if ( preg_match( '#<x[^/>]+>#', $xmlString ) && preg_match( '# x #', $error->message ) ) {
+                        $this->_addError( self::ERR_UNCLOSED_X_TAG );
+                    }
                 }
             }
-
-
 //            Log::doLog($xmlString);
 //            Log::doLog($errorList);
 
@@ -1124,15 +1029,6 @@ class QA {
         }
 
         return $dom;
-    }
-
-    private function checkUnclosedTag($tag, $xmlString, $error){
-        /* error code 76 libxml _xmlerror XML_ERR_TAG_NOT_FINISHED */
-        $message = str_replace("\n", " ", $error->message);
-        if ( $error->code == 76 && preg_match( '#<'.$tag.'[^/>]+>#', $xmlString ) && preg_match( '# '.$tag.' #', $message ) ) {
-            return true;
-        }
-        return false;
     }
 
     public function getMalformedXmlStructs() {
@@ -1148,9 +1044,9 @@ class QA {
 //        Log::doLog( $this->source_seg );
 //        Log::doLog( $this->target_seg );
 
-        preg_match_all( '/(<(?:[^>]+id\s*=[^>]+)[\/]{0,1}>)/', $this->source_seg, $matches );
+        preg_match_all( '/(<[^\/>]+[\/]{0,1}>)/', $this->source_seg, $matches );
         $malformedXmlSrcStruct = $matches[ 1 ];
-        preg_match_all( '/(<(?:[^>]+id\s*=[^>]+)[\/]{0,1}>)/', $this->target_seg, $matches );
+        preg_match_all( '/(<[^\/>]+[\/]{0,1}>)/', $this->target_seg, $matches );
         $malformedXmlTrgStruct = $matches[ 1 ];
 
 //        Log::doLog( $malformedXmlSrcStruct );
@@ -1193,17 +1089,10 @@ class QA {
             }
         }
 
-        $totalResult     = [ 'source' => [], 'target' => [] ];
-        $source_segments = array_merge( $clonedSrc, $clonedClosingSrc );
-        foreach ( $source_segments as $source_segment ) {
-            $totalResult[ 'source' ][] = $source_segment;
-        }
-
-        $target_segments = array_merge( $clonedTrg, $clonedClosingTrg );
-        foreach ( $target_segments as $target_segment ) {
-            $totalResult[ 'target' ][] = $target_segment;
-        }
-
+        $totalResult = array(
+                'source' => array_merge( $clonedSrc, $clonedClosingSrc ),
+                'target' => array_merge( $clonedTrg, $clonedClosingTrg ),
+        );
 
 //        Log::doLog($totalResult);
 
@@ -1314,18 +1203,18 @@ class QA {
 //        Log::doLog($closing_malformedXmlTrgStruct);
 
         foreach ( $open_malformedXmlTrgStruct as $pos => $tag ) {
-            if ( str_replace(" ", "", $open_malformedXmlSrcStruct[ $pos ] ) != str_replace(" ", "", $tag ) ) {
+            if ( trim( $open_malformedXmlSrcStruct[ $pos ] ) != trim( $tag ) ) {
                 $this->_addError( self::ERR_TAG_ORDER );
-                $this->tagPositionError[] = ( new LtGtEncode() )->transform( $complete_malformedTrgStruct[ $pos ] );
+                $this->tagPositionError[] = $complete_malformedTrgStruct[ $pos ];
 
                 return;
             }
         }
 
         foreach ( $closing_malformedXmlTrgStruct as $pos => $tag ) {
-            if ( str_replace(" ", "", $closing_malformedXmlSrcStruct[ $pos ] ) != str_replace(" ", "", $tag ) ) {
+            if ( trim( $closing_malformedXmlSrcStruct[ $pos ] ) != trim( $tag ) ) {
                 $this->_addError( self::ERR_TAG_ORDER );
-                $this->tagPositionError[] = ( new LtGtEncode() )->transform( $complete_malformedTrgStruct[ $pos ] );
+                $this->tagPositionError[] = $complete_malformedTrgStruct[ $pos ];
 
                 return;
             }
@@ -1334,14 +1223,14 @@ class QA {
         /*
          * Check for corresponding self closing tags like <g id="pt673"/>
          */
-        preg_match_all( '#(<[^>]+/>)#', $this->source_seg, $selfClosingTags_src );
-        preg_match_all( '#(<[^>]+/>)#', $this->target_seg, $selfClosingTags_trg );
+        preg_match_all( '#<([^>]+)/>#', $this->source_seg, $selfClosingTags_src );
+        preg_match_all( '#<([^>]+)/>#', $this->target_seg, $selfClosingTags_trg );
         $selfClosingTags_src = $selfClosingTags_src[ 1 ];
         $selfClosingTags_trg = $selfClosingTags_trg[ 1 ];
         foreach ( $selfClosingTags_trg as $pos => $tag ) {
-            if ( str_replace(" ", "", $selfClosingTags_src[ $pos ] ) != str_replace(" ", "", $tag ) ) {
-                $this->_addError( self::ERR_TAG_ORDER );
-                $this->tagPositionError[] = ( new RestoreXliffTagsForView() )->transform( $selfClosingTags_trg[ $pos ] );
+            if ( trim( $selfClosingTags_src[ $pos ] ) != trim( $tag ) ) {
+                $this->_addError( self::ERR_TAG_MISMATCH );
+                $this->tagPositionError[] = $selfClosingTags_trg[ $pos ];
 
                 return;
             }
@@ -1372,8 +1261,8 @@ class QA {
         //</g> ...
         // <g ... >
         // <x ... />
-        preg_match_all( '#</g>[\s\t\x{a0}\r\n\.\,\;\!\?]+|[\s\t\x{a0}\r\n]+<(?:(?:x|ph)[^>]+|[^/>]+)>#u', rtrim( $this->source_seg ), $source_tags );
-        preg_match_all( '#</g>[\s\t\x{a0}\r\n\.\,\;\!\?]+|[\s\t\x{a0}\r\n]+<(?:(?:x|ph)[^>]+|[^/>]+)>#u', rtrim( $this->target_seg ), $target_tags );
+        preg_match_all( '#</g>[\s\t\x{a0}\r\n]+|[\s\t\x{a0}\r\n]+<(?:x[^>]+|[^/>]+)>#u', rtrim( $this->source_seg ), $source_tags );
+        preg_match_all( '#</g>[\s\t\x{a0}\r\n]+|[\s\t\x{a0}\r\n]+<(?:x[^>]+|[^/>]+)>#u', rtrim( $this->target_seg ), $target_tags );
 //        preg_match_all('#[\s\t\x{a0}\r\n]+<(?:x[^>]+|[^/>]+)>#u', rtrim($this->source_seg), $source_tags);
 //        preg_match_all('#[\s\t\x{a0}\r\n]+<(?:x[^>]+|[^/>]+)>#u', rtrim($this->target_seg), $target_tags);
         $source_tags = $source_tags[ 0 ];
@@ -1386,28 +1275,6 @@ class QA {
 //            Log::hexDump($this->target_seg);
             for ( $i = 0; $i < $num; $i++ ) {
                 $this->_addError( self::ERR_BOUNDARY_HEAD_TEXT );
-            }
-        }
-
-        //get all special chars ( and spaces ) after a tag x or ph
-        //</x> ...
-        //</ph> ...
-        preg_match_all( '#<(?:(?:x|ph)[^>]+|[^/>]+)>+[\s\t\x{a0}\r\n\,\.\;\!\?]#u', $this->source_seg, $source_tags );
-        preg_match_all( '#<(?:(?:x|ph)[^>]+|[^/>]+)>+[\s\t\x{a0}\r\n\,\.\;\!\?]#u', $this->target_seg, $target_tags );
-        $source_tags = $source_tags[ 0 ];
-        $target_tags = $target_tags[ 0 ];
-        if ( ( count( $source_tags ) != count( $target_tags ) ) ) {
-            $num = abs( count( $source_tags ) - count( $target_tags ) );
-
-//            Log::doLog($this->source_seg);
-//            Log::doLog($this->target_seg);
-//            Log::hexDump($this->source_seg);
-//            Log::hexDump($this->target_seg);
-//            Log::doLog($source_tags);
-//            Log::doLog($target_tags);
-
-            for ( $i = 0; $i < $num; $i++ ) {
-                $this->_addError( self::ERR_BOUNDARY_TAIL );
             }
         }
 
@@ -1457,7 +1324,6 @@ class QA {
     }
 
     //
-
     /**
      * Try to perform an heuristic re-align of tags id by position.
      *
@@ -1468,7 +1334,6 @@ class QA {
      * if no errors where found the dom is reloaded and tags map are updated.
      *
      * @return errObject[]|null
-     * @throws Exception|DOMException
      */
     public function tryRealignTagID() {
 
@@ -1483,15 +1348,14 @@ class QA {
         $targetNumDiff = count( $this->trgDomMap[ 'DOMElement' ] ) - count( $this->srcDomMap[ 'DOMElement' ] );
         $diffTagG      = count( @$this->trgDomMap[ 'g' ] ) - count( @$this->srcDomMap[ 'g' ] );
         $diffTagX      = count( @$this->trgDomMap[ 'x' ] ) - count( @$this->srcDomMap[ 'x' ] );
-		$diffTagBX     = count( @$this->trgDomMap['bx']) - count(@$this->srcDomMap['bx'] );
-		$diffTagEX     = count( @$this->trgDomMap['ex']) - count(@$this->srcDomMap['ex'] );
-		$diffTagPH     = count( @$this->trgDomMap['ph']) - count(@$this->srcDomMap['ph'] );
+		$diffTagBX     = count(@$this->trgDomMap['bx']) - count(@$this->srcDomMap['bx']);
+		$diffTagEX     = count(@$this->trgDomMap['ex']) - count(@$this->srcDomMap['ex']);
 
         //there are the same number of tags in source and target
         if ( $targetNumDiff == 0 && !empty( $this->srcDomMap[ 'refID' ] ) ) {
 
             //if tags are in exact number
-            if( $diffTagG == 0 && $diffTagX == 0 && $diffTagBX == 0 && $diffTagEX == 0 && $diffTagPH == 0 ){
+            if( $diffTagG == 0 && $diffTagX == 0 && $diffTagBX == 0 && $diffTagEX == 0 ){
 
                 //Steps:
 
@@ -1515,11 +1379,6 @@ class QA {
 					$pattern[] = '|<ex id ?= ?["\']{1}(' . $tagID . ')["\']{1} ?/>|ui';
 					$replacement[] = '<ex id="###' . $this->srcDomMap['ex'][$pos] . '###" />';
 				}
-
-                foreach( $this->trgDomMap['ph'] as $pos => $tagID ){
-                    $pattern[] = '|<ph id ?= ?["\']{1}(' . $tagID . ')["\']{1} (equiv-text=["\'].+?["\'] ?)/>|ui';
-                    $replacement[] = '<ph id="###' . $this->srcDomMap['ph'][$pos] . '###" $2/>';
-                }
 
                 $result = preg_replace( $pattern, $replacement, $this->target_seg, 1 );
 
@@ -1567,13 +1426,11 @@ class QA {
             $deepDiffTagG = $this->_checkTagCountMismatch( count( @$this->srcDomMap[ 'g' ] ), count( @$this->trgDomMap[ 'g' ] ) );
         }
 
-        if( $targetNumDiff == 0 ){
-            //check for Tag ID MISMATCH
-            $diffArray = array_diff_assoc( $this->srcDomMap[ 'refID' ], $this->trgDomMap[ 'refID' ] );
-            if ( !empty( $diffArray ) && !empty( $this->trgDomMap[ 'DOMElement' ] ) ) {
-                $this->_addError( self::ERR_TAG_ID );
+        //check for Tag ID MISMATCH
+        $diffArray = array_diff_assoc( $this->srcDomMap[ 'refID' ], $this->trgDomMap[ 'refID' ] );
+        if ( !empty( $diffArray ) && !empty( $this->trgDomMap[ 'DOMElement' ] ) ) {
+            $this->_addError( self::ERR_TAG_ID );
 //            Log::doLog($diffArray);
-            }
         }
 
     }
@@ -1599,7 +1456,7 @@ class QA {
 
         foreach ( $this->srcDomMap[ 'DOMElement' ] as $srcTagReference ) {
 
-            if( $srcTagReference['name'] == 'x' || $srcTagReference['name'] == 'bx' || $srcTagReference['name'] == 'ex' || $srcTagReference['name'] == 'ph' ){
+            if( $srcTagReference['name'] == 'x' || $srcTagReference['name'] == 'bx' || $srcTagReference['name'] == 'ex' ){
                 continue;
             }
 
@@ -1716,12 +1573,10 @@ class QA {
      * @param int $trgNodeCount
      *
      * @return int
-     * @throws \Exception
      */
     protected function _checkTagCountMismatch( $srcNodeCount, $trgNodeCount ) {
-
         if ( $srcNodeCount != $trgNodeCount ) {
-            $this->_addError( $this->getFeatureSet()->filter( 'checkTagMismatch', self::ERR_COUNT, $this ) );
+            $this->_addError( self::ERR_COUNT );
         }
 
         return $trgNodeCount - $srcNodeCount;
@@ -1931,7 +1786,7 @@ class QA {
             }
 
             //Substitute 4(+)-byte characters from a UTF-8 string to htmlentities
-            $matches[ 1 ] = preg_replace_callback( '/([\xF0-\xF7]...)/s', [ 'CatUtils', 'htmlentitiesFromUnicode' ], $matches[ 1 ] );
+            $matches[ 1 ] = preg_replace_callback( '/([\xF0-\xF7]...)/s', 'CatUtils::htmlentitiesFromUnicode', $matches[ 1 ] );
 
             /*
              * BUG on windows Paths: C:\\Users\\user\\Downloads\\File per field test\\1\\gui_plancompression.html

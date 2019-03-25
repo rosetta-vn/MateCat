@@ -2,8 +2,8 @@
 SegmentFilter = window.SegmentFilter || {};
 
 SegmentFilter.enabled = function() {
-    return config.segmentFilterEnabled;
-};
+    return ReviewImproved.enabled();
+}
 
 if (SegmentFilter.enabled())
 (function($, UI, SF, undefined) {
@@ -43,10 +43,12 @@ if (SegmentFilter.enabled())
     } ;
 
     $.extend(SF, {
-        open: false,
-        filteringSegments: false,
         getLastFilterData : function() {
             return this.getStoredState().serverData ;
+        },
+
+        filterPanelOpen : function() {
+            return UI.body.hasClass('filtering');
         },
 
         /**
@@ -55,7 +57,7 @@ if (SegmentFilter.enabled())
          * @returns {*}
          */
         filtering : function() {
-            return this.filteringSegments;
+            return UI.body.hasClass('sampling-enabled');
         },
 
         /**
@@ -98,57 +100,57 @@ if (SegmentFilter.enabled())
             return localStorage.removeItem( keyForLocalStorage() ) ;
         },
 
-        filterSubmit : function( data ,extendendLocalStorageValues) {
-            if(!extendendLocalStorageValues){
-                extendendLocalStorageValues = {};
+        restore : function( data ) {
+            debugger  // TODO, find who calls this
+            window.segment_filter_panel.setState( this.getStoredState().reactState ) ;
+            $(document).trigger('segment-filter-submit');
+        },
+
+        filterSubmit : function( data, wantedSegment) {
+            if (!wantedSegment) {
+                wantedSegment = null;
             }
-            this.filteringSegments = true;
+            $('body').addClass('sampling-enabled');
+
             data = { filter: data } ;
-            data.filter.revision = config.isReview;
-            var password = (config.isReview) ? config.review_password : config.password;
+
             var path = sprintf('/api/v2/jobs/%s/%s/segments-filter?%s',
-                              config.id_job, password, $.param( data ) );
+                              config.id_job, config.password, $.param( data ) );
 
             return $.getJSON(path).pipe(function( data ) {
-                SegmentActions.removeAllMutedSegments();
                 $(document).trigger('segment-filter:filter-data:load', { data: data });
 
-                var reactState = Object.assign({
+                var reactState = {
                     filteredCount : data.count,
-                    filtering : true,
-                    segmentsArray: data.segment_ids
-                },extendendLocalStorageValues);
-                CatToolActions.setSegmentFilter(data);
+                    filtering : true
+                } ;
+
+                window.segment_filter_panel.setState( reactState );
 
                 UI.clearStorage('SegmentFilter');
 
                 SegmentFilter.setStoredState({
                     serverData : data ,
-                    reactState : reactState
+                    reactState : window.segment_filter_panel.state
                 }) ;
 
-                SegmentActions.setMutedSegments(data[ 'segment_ids' ]);
+                UI.unmountSegments();
 
+                var afterRenderCallback = function() { } ;
                 var segmentToOpen ;
-                var lastSegmentId = SegmentFilter.getStoredState().lastSegmentId;
-                if ( !lastSegmentId ) {
+
+                if ( !wantedSegment ) {
                     segmentToOpen =  data[ 'segment_ids' ] [ 0 ] ;
-                    var segment$ = UI.getSegmentById(segmentToOpen);
-                    if (segment$.length) {
-                        UI.scrollSegment( segment$, segmentToOpen );
-                        UI.openSegment( segment$ );
-                    }
-                } else if ( lastSegmentId && !segmentIsInSample( lastSegmentId, data[ 'segment_ids' ] ) ) {
-                    callbackForSegmentNotInSample( lastSegmentId )  ;
+                } else if ( wantedSegment && !segmentIsInSample( wantedSegment, data[ 'segment_ids' ] ) ) {
+                    segmentToOpen =  data[ 'segment_ids' ] [ 0 ] ;
+                    afterRenderCallback = callbackForSegmentNotInSample( wantedSegment )  ;
                 } else {
-                    segmentToOpen = lastSegmentId ;
-                    var segment$ = UI.getSegmentById(segmentToOpen);
-                    if (segment$) {
-                        UI.openSegment(segment$)
-                        UI.scrollSegment(segment$, segmentToOpen);
-                    }
+                    segmentToOpen = wantedSegment ;
                 }
 
+                return UI.render({
+                    segmentToOpen: segmentToOpen
+                }).done( afterRenderCallback ) ;
             })
         },
 
@@ -159,92 +161,41 @@ if (SegmentFilter.enabled())
          *
          */
         openFilter : function() {
-            CatToolActions.openSegmentFilter();
-            this.open = true;
-            var localStorageData = this.getStoredState();
-            if ( localStorageData.serverData ) {
-                SegmentActions.setMutedSegments(this.getStoredState().serverData.segment_ids);
-                CatToolActions.setSegmentFilter(localStorageData.serverData, localStorageData.reactState);
-                this.filteringSegments = true;
+            UI.body.addClass('filtering'); // filtering makes sense if we have serverData
+
+            if ( this.getStoredState().serverData ) {
+                var ids = $.map( this.getStoredState().serverData.segment_ids, function(i) {
+                    return '#segment-' + i ;
+                });
+                var selector = 'section:not( ' + ids + ')';
+
+                UI.body.addClass('sampling-enabled');
+                $( selector ).addClass('muted');
+
                 setTimeout( function() {
-                    UI.createButtons();
                     tryToFocusLastSegment();
-                }, 200 );
+                }, 600 );
             }
 
+            $(document).trigger('header-tool:open', { name: 'filter' });
         },
 
         clearFilter : function() {
             this.clearStoredData();
-            this.filteringSegments = false;
-            SegmentActions.removeAllMutedSegments();
+            window.segment_filter_panel.resetState();
+
+            this.closeFilter() ;
         },
 
         closeFilter : function() {
-            CatToolActions.closeSubHeader();
-            this.open = false;
-            SegmentActions.removeAllMutedSegments();
-            UI.createButtons();
+            UI.body.removeClass('filtering');
+            UI.body.removeClass('sampling-enabled');
+            $('.muted').removeClass('muted');
+
             setTimeout( function() {
                 UI.scrollSegment( UI.currentSegment ) ;
             }, 600 );
-        },
-        goToNextRepetition: function ( button, status ) {
-            var hash = UI.currentSegment.data('hash');
-            var segmentFilterData = SegmentFilter.getStoredState();
-            var groupArray = segmentFilterData.serverData.grouping[hash];
-            var index = groupArray.indexOf(UI.currentSegmentId);
-            var nextItem;
-            if(index >= 0 && index < groupArray.length - 1) {
-                nextItem = groupArray[index + 1]
-            } else {
-                nextItem = groupArray[0];
-            }
-            UI.changeStatus(button, status, 0);
-            skipChange = true;
-
-            if ( UI.maxNumSegmentsReached() && !UI.offline ) {
-                UI.reloadToSegment( nextItem );
-                return ;
-            }
-
-            UI.setStatusButtons(UI.currentSegment.find('a.translated'));
-
-            if ( UI.segmentIsLoaded(nextItem) ) {
-                UI.gotoSegment(nextItem)
-            } else {
-                UI.render({ segmentToOpen: nextItem });
-            }
-        },
-        goToNextRepetitionGroup: function ( button, status ) {
-            var hash = UI.currentSegment.data('hash');
-            var segmentFilterData = SegmentFilter.getStoredState();
-            var groupsArray = Object.keys(segmentFilterData.serverData.grouping);
-            var index = groupsArray.indexOf(hash);
-            var nextGroupHash;
-            if(index >= 0 && index < groupsArray.length - 1) {
-                nextGroupHash = groupsArray[index + 1]
-            } else {
-                nextGroupHash = groupsArray[0];
-            }
-            var nextItem = segmentFilterData.serverData.grouping[nextGroupHash][0];
-            UI.changeStatus(button, status, 0);
-            skipChange = true;
-
-            if ( UI.maxNumSegmentsReached() && !UI.offline ) {
-                UI.reloadToSegment( nextItem );
-                return ;
-            }
-
-            UI.setStatusButtons(UI.currentSegment.find('a.translated'));
-
-            if ( UI.segmentIsLoaded(nextItem) ) {
-                UI.gotoSegment(nextItem)
-            } else {
-                UI.render({ segmentToOpen: nextItem });
-            }
         }
-
     });
 
     $(document).on('segmentsAdded', function(e) {
@@ -279,13 +230,29 @@ if (SegmentFilter.enabled())
         }
     });
 
+    $(document).on('ready', function() {
+        // mount the hiddent react component by default so we can keep status
+        window.segment_filter_panel = ReactDOM.render(
+          React.createElement(
+            SegmentFilter_MainPanel, {}),
+            $('#segment-filter-mountpoint')[0]
+          );
+    });
+
+    $(document).on('header-tool:open', function(e, data) {
+        if ( data.name != 'filter' ) {
+            SF.closeFilter();
+        }
+    });
+
     $(document).on('click', "header .filter", function(e) {
         e.preventDefault();
-        if (!SegmentFilter.open) {
-            SegmentFilter.openFilter();
+
+        if ( UI.body.hasClass('filtering') ) {
+            SF.closeFilter();
         } else {
-            SegmentFilter.closeFilter();
-            SegmentFilter.open = false;
+            UI.closeAllMenus(e);
+            SF.openFilter();
         }
     });
 

@@ -39,7 +39,7 @@ class DownloadOmegaTDecorator extends AbstractDecorator {
                 $this->controller->password,
                 $this->controller->getJob()->source,
                 $this->controller->getJob()->target,
-                $this->controller->getUser()->uid
+                $this->controller->getLoggedUser()->uid
         );
 
         $tmsService->setOutputType( 'mt' );

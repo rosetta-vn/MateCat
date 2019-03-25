@@ -1,7 +1,5 @@
 <?php
 
-use DataAccess\ShapelessConcreteStruct;
-
 /**
  * Created by PhpStorm.
  * User: fregini
@@ -95,12 +93,7 @@ class Analysis_AnalysisModel {
 
         $this->pid = $this->project->id;
 
-        /**
-         * @var $object__p_jdata ShapelessConcreteStruct
-         */
-        foreach ( $this->project_data as $object__p_jdata ) {
-
-            $p_jdata = $object__p_jdata->getArrayCopy();
+        foreach ( $this->project_data as $p_jdata ) {
 
             $p_jdata[ 'filename' ] = ZipArchiveExtended::getFileName( $p_jdata[ 'filename' ] );
 
@@ -331,9 +324,9 @@ class Analysis_AnalysisModel {
         }
 
         if ( $this->chunk == null ) {
-            $this->project_data = ( new \Projects_ProjectDao() )->setCacheTTL( 60 * 60 * 24 )->getProjectData( $this->project->id, $this->project->password );
+            $this->project_data = getProjectData( $this->project->id, $this->project->password );
         } else {
-            $this->project_data = ( new \Projects_ProjectDao() )->setCacheTTL( 60 * 60 * 24 )->getProjectData( $this->project->id, $this->project->password,
+            $this->project_data = getProjectData( $this->project->id, $this->project->password,
                     $this->chunk->id, $this->chunk->password );
         }
 

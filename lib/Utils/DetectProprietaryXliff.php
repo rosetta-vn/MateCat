@@ -206,34 +206,33 @@ class DetectProprietaryXliff {
 
     }
 
-    public static function fileMustBeConverted( $fullPath, $enforceOnXliff ) {
-
-        $_convert = true;
+    public static function isConversionToEnforce( $fullPath ) {
+        $isAConvertedFile = true;
 
         $fileType = self::getInfo( $fullPath );
 
-        if ( self::isXliffExtension() || DetectProprietaryXliff::getMemoryFileType() ) {
+        if ( self::isXliffExtension() ) {
 
-            if ( !empty( INIT::$FILTERS_ADDRESS ) ) {
+            if ( !empty(INIT::$FILTERS_ADDRESS) ) {
 
                 //conversion enforce
-                if ( !$enforceOnXliff ) {
+                if ( !INIT::$FORCE_XLIFF_CONVERSION ) {
 
                     //if file is not proprietary AND Enforce is disabled
                     //we take it as is
-                    if ( !$fileType[ 'proprietary' ] || DetectProprietaryXliff::getMemoryFileType() ) {
-                        $_convert = false;
+                    if ( !$fileType[ 'proprietary' ] ) {
+                        $isAConvertedFile = false;
                         //ok don't convert a standard sdlxliff
                     }
                 } else {
                     //if conversion enforce is active
                     //we force all xliff files but not files produced by SDL Studio because we can handle them
                     if (
-                            $fileType[ 'proprietary_short_name' ] == 'matecat_converter'
-                            || $fileType[ 'proprietary_short_name' ] == 'trados'
-                            || DetectProprietaryXliff::getMemoryFileType()
+                        $fileType[ 'proprietary_short_name' ] == 'matecat_converter'
+                        || $fileType[ 'proprietary_short_name' ] == 'trados'
+                        || DetectProprietaryXliff::getMemoryFileType()
                     ) {
-                        $_convert = false;
+                        $isAConvertedFile = false;
                         //ok don't convert a standard sdlxliff
                     }
                 }
@@ -245,16 +244,15 @@ class DetectProprietaryXliff {
                  * @see upload.class.php
                  * */
 
-                $_convert = -1;
+                $isAConvertedFile = -1;
                 //stop execution
             } elseif ( !$fileType[ 'proprietary' ] ) {
-                $_convert = false;
+                $isAConvertedFile = false;
                 //ok don't convert a standard sdlxliff
             }
         }
 
-        return $_convert;
-
+        return $isAConvertedFile;
     }
 
 }

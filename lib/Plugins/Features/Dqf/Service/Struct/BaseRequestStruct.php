@@ -11,7 +11,7 @@ namespace Features\Dqf\Service\Struct;
 
 use INIT;
 
-abstract class BaseRequestStruct extends BaseStruct implements IBaseStruct {
+abstract class BaseRequestStruct extends BaseStruct {
 
     abstract function getHeaders() ;
 

@@ -1,5 +1,3 @@
-let PropTypes = require('prop-types');
-
 export default class TextField extends React.Component {
 
     constructor(props) {
@@ -52,7 +50,7 @@ export default class TextField extends React.Component {
 }
 
 TextField.propTypes = {
-    showError: PropTypes.bool.isRequired,
-    onFieldChanged: PropTypes.func.isRequired
+    showError: React.PropTypes.bool.isRequired,
+    onFieldChanged: React.PropTypes.func.isRequired
 };
 

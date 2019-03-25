@@ -15,8 +15,8 @@ use PDO;
 class DqfSegmentsDao extends DataAccess_AbstractDao {
     const TABLE = 'dqf_segments';
 
-    protected static $primary_keys         = ['id_segment'];
-    protected static $auto_increment_field = [] ;
+    protected static $primary_keys = ['id_segment'];
+    protected static $auto_increment_fields = [] ;
 
     public function getByIdSegment( $id_segment ) {
         $sql = "SELECT * FROM dqf_segments WHERE id_segment = ?" ;
@@ -58,22 +58,6 @@ class DqfSegmentsDao extends DataAccess_AbstractDao {
         return $result ;
     }
 
-    public function insertBulkMapForTranslationId( array $structs ) {
-        $sql = " INSERT INTO dqf_segments (id_segment, dqf_translation_id) VALUES " ;
-        $sql .= implode(', ', array_fill( 0, count( $structs ), " ( ?, ? ) " ) ) ;
-        $sql .= " ON DUPLICATE KEY UPDATE dqf_segments.dqf_translation_id = VALUES(dqf_segments.dqf_translation_id) " ;
-
-        $conn = $this->getConnection()->getConnection() ;
-
-        $stmt = $conn->prepare( $sql );
-        $flattened_values = array_reduce( $structs, 'array_merge', array() );
-
-        $result = $stmt->execute( $flattened_values );
-
-        if ( !$result ) {
-            throw new \Exception('Error during bulk save of dqf_segments: ' . var_export( $flattened_values, true)  ) ;
-        }
-    }
 
     /**
      * @param array $structs
@@ -86,11 +70,6 @@ class DqfSegmentsDao extends DataAccess_AbstractDao {
 
         $stmt = $conn->prepare( $sql );
         $flattened_values = array_reduce( $structs, 'array_merge', array() );
-        $result = $stmt->execute( $flattened_values );
-
-        if ( !$result ) {
-            throw new \Exception('Error during bulk save of dqf_segments: ' . var_export( $flattened_values, true)  ) ;
-
-        }
+        $stmt->execute( $flattened_values );
     }
 }

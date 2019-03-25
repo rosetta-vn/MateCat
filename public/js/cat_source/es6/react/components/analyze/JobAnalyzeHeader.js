@@ -47,13 +47,7 @@ class JobAnalyzeHeader extends React.Component {
                         {/*<span id="raw-words">{parseInt(this.total)}</span> Total words*/}
                     {/*</div>*/}
                     <div className="job-payable">
-                        <span id="words">{parseInt(this.payable)}</span>
-                        { !config.isCJK ? (
-                            " MateCat Weighted words"
-                        ) : (
-                            " MateCat weighted characters"
-                        )}
-
+                        <span id="words">{parseInt(this.payable)}</span> MateCat Weighted words
                     </div>
 
                 </div>;

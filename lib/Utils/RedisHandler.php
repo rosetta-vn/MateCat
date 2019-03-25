@@ -20,8 +20,6 @@ class RedisHandler {
      * Get the connection to Redis server and return it
      *
      * @throws \Predis\Connection\ConnectionException
-     * @throws ReflectionException
-     * @return Predis\Client
      */
     public function getConnection( ){
 

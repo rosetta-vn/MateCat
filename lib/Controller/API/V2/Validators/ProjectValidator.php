@@ -2,47 +2,12 @@
 
 namespace API\V2\Validators;
 
-use API\V2\Exceptions\NotFoundException;
-use API\V2\KleinController;
-use ApiKeys_ApiKeyStruct;
 use Log;
 
-/**
- * @daprecated this should extend Base
- *
- * Class ProjectValidator
- * @package API\V2\Validators
- */
-class ProjectValidator extends Base {
+class ProjectValidator {
 
-    /**
-     * @var ApiKeys_ApiKeyStruct
-     */
     private $api_record;
     private $id_project;
-
-    /**
-     * @param ApiKeys_ApiKeyStruct $api_record
-     *
-     * @return $this
-     */
-    public function setApiRecord( $api_record ) {
-        $this->api_record = $api_record;
-
-        return $this;
-    }
-
-    /**
-     * @param mixed $id_project
-     *
-     * @return $this
-     */
-    public function setIdProject( $id_project ) {
-        $this->id_project = $id_project;
-
-        return $this;
-    }
-
     /**
      * @var \Projects_ProjectStruct
      */
@@ -57,28 +22,23 @@ class ProjectValidator extends Base {
         $this->feature = $feature;
     }
 
-    public function __construct( KleinController $controller ) {}
+    public function __construct( $api_record, $id_project ) {
+        $this->api_record = $api_record;
+        $this->id_project = $id_project;
+    }
 
-    /**
-     * @return mixed|void
-     * @throws NotFoundException
-     */
-    protected function _validate() {
-
+    public function validate() {
         $this->project = \Projects_ProjectDao::findById( $this->id_project );
 
         if ( $this->project == false ) {
-            throw new NotFoundException( "Project Not Found.", 404 );
+            return false;
         }
 
         if ( !$this->validateFeatureEnabled() ) {
-            throw new NotFoundException( "Project Not Found.", 404 );
+            return false;
         }
 
-        if( !$this->inProjectScope() ){
-            throw new NotFoundException( "Project Not Found.", 404 );
-        }
-
+        return $this->inProjectScope();
     }
 
     private function validateFeatureEnabled() {

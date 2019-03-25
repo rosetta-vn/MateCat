@@ -80,7 +80,7 @@ if ( ProjectCompletion.enabled() ) {
         button.removeClass('isMarkableAsComplete isMarkedComplete');
         button.addClass('notMarkedComplete');
 
-        if ( UI.isMarkedAsCompleteClickable( stats ) ) {
+        if ( isClickableStatus( stats ) ) {
             button.addClass('isMarkableAsComplete');
             button.removeAttr('disabled');
         } else {
@@ -142,7 +142,7 @@ if ( ProjectCompletion.enabled() ) {
     };
 
     var messageForClickOnReadonly = function( section ) {
-        if ( UI.translateAndReadonly()) {
+        if ( translateAndReadonly() ) {
             return 'This job is currently under review. Segments are in read-only mode.';
         }
         else {
@@ -151,7 +151,7 @@ if ( ProjectCompletion.enabled() ) {
     };
 
     var isReadonlySegment = function( segment ) {
-        return UI.translateAndReadonly() || original_isReadonlySegment( segment ) ;
+        return translateAndReadonly() || original_isReadonlySegment( segment ) ;
     }
 
     var original_isReadonlySegment = UI.isReadonlySegment ;
@@ -170,68 +170,23 @@ if ( ProjectCompletion.enabled() ) {
         else {
             original_handleClickOnReadOnly.apply( undefined, arguments );
         }
-    };
-
-    var markJobAsComplete = function (  ) {
-        if ( config.isReview ) {
-            UI.clickMarkAsCompleteForReview();
-        } else {
-            UI.clickMarkAsCompleteForTranslate();
-        }
-    };
-
-    var clickOnMarkAsComplete = function (  ) {
-        if ( !button.hasClass('isMarkableAsComplete') ) {
-            return;
-        }
-        if (UI.globalWarnings.totals && UI.globalWarnings.totals.ERROR.length > 0) {
-            UI.showFixWarningsModal();
-            return;
-        } else {
-            UI.markJobAsComplete()
-        }
-        $(document).trigger('sidepanel:close');
-    };
-
-    var showFixWarningsModal = function (  ) {
-        APP.confirm({
-            name: 'markJobAsComplete', // <-- this is the name of the function that gets invoked?
-            cancelTxt: 'Fix errors',
-            onCancel: 'goToFirstError',
-            callback: 'markJobAsComplete',
-            okTxt: 'Mark as complete',
-            msg: 'Unresolved issues may prevent completing your translation. <br>Please fix the issues. <a style="color: #4183C4; font-weight: 700; text-decoration:' +
-            ' underline;" href="https://www.matecat.com/support/advanced-features/understanding-fixing-tag-errors-tag-issues-matecat/" target="_blank">How to fix tags in MateCat </a> '
-        });
-    };
-
-    var checkCompletionOnReady = function (  ) {
-        UI.translateAndReadonly() && showTranslateWarningMessage();
-        evalReviseNotice();
-    };
+    }
 
     $.extend( UI, {
         // This is necessary because of the way APP.popup works
         markAsCompleteSubmit      : markAsCompleteSubmit,
         isReadonlySegment         : isReadonlySegment,
         messageForClickOnReadonly : messageForClickOnReadonly,
-        handleClickOnReadOnly     : handleClickOnReadOnly,
-        markJobAsComplete         : markJobAsComplete,
-        isMarkedAsCompleteClickable: isClickableStatus,
-        translateAndReadonly      : translateAndReadonly,
-        clickMarkAsCompleteForTranslate : clickMarkAsCompleteForTranslate,
-        clickMarkAsCompleteForReview : clickMarkAsCompleteForReview,
-        showFixWarningsModal : showFixWarningsModal,
-        checkCompletionOnReady: checkCompletionOnReady
+        handleClickOnReadOnly     : handleClickOnReadOnly
     });
 
 
     var showTranslateWarningMessage = function() {
 
-        var message = "All segments are in <b>read-only mode</b> because this job is under review." ;
+        var message = "This job is currently under review. Segments are in read-only mode." ;
 
         if ( config.chunk_completion_undoable && config.last_completion_event_id ) {
-            message = message + "<p class='warning-call-to'><a href=\"javascript:void(0);\" id=\"showTranslateWarningMessageUndoLink\" >Re-Open Job</a></p>";
+            message = message + " To undo this action <a href=\"javascript:void(0);\" id=\"showTranslateWarningMessageUndoLink\" >click here</a>.";
         }
 
         translateWarningMessage = window.intercomErrorNotification = APP.addNotification({
@@ -259,7 +214,7 @@ if ( ProjectCompletion.enabled() ) {
     });
 
     var evalReviseNotice = function() {
-        if ( config.isReview && config.job_completion_current_phase == 'translate' && config.job_marked_complete == 0 ) {
+        if ( config.isReview && config.job_completion_current_phase == 'translate' ) {
             warningNotification = APP.addNotification({
                 type: 'warning',
                 title: 'Warning',
@@ -272,15 +227,25 @@ if ( ProjectCompletion.enabled() ) {
 
     $(document).on('click', '#markAsCompleteButton', function(ev) {
         ev.preventDefault();
-        clickOnMarkAsComplete();
+        if ( !button.hasClass('isMarkableAsComplete') ) {
+            return;
+        }
+        $(document).trigger('sidepanel:close');
+        if ( config.isReview ) {
+            clickMarkAsCompleteForReview();
+        } else {
+            clickMarkAsCompleteForTranslate();
+        }
+
     });
 
     $(document).on('setTranslation:success', function(ev, data) {
         evalSendButtonStatus( data.stats );
     });
 
-    $(document).ready(function() {
-        UI.checkCompletionOnReady()
+    $(document).on('ready',  function() {
+        translateAndReadonly() && showTranslateWarningMessage();
+        evalReviseNotice();
     });
 
 

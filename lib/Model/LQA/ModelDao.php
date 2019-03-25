@@ -10,9 +10,7 @@ use Log;
 class ModelDao extends DataAccess_AbstractDao {
     const TABLE = "qa_models";
 
-    protected static $auto_increment_field = ['id'];
-
-    protected static $_sql_get_model_by_id = "SELECT * FROM qa_models WHERE id = :id LIMIT 1" ;
+    protected static $auto_increment_fields = ['id'];
 
     protected function _buildResult( $array_result ) { }
 
@@ -21,12 +19,12 @@ class ModelDao extends DataAccess_AbstractDao {
      * @return \LQA\ModelStruct
      */
     public static function findById( $id ) {
-
-        $thisDao = new self();
+        $sql = "SELECT * FROM qa_models WHERE id = :id LIMIT 1" ;
         $conn = Database::obtain()->getConnection();
-        $stmt = $conn->prepare( self::$_sql_get_model_by_id );
-
-        return $thisDao->setCacheTTL( 60*60*24*30 )->_fetchObject( $stmt, new ModelStruct(), [ 'id' => $id ] )[0];
+        $stmt = $conn->prepare( $sql );
+        $stmt->execute(array('id' => $id));
+        $stmt->setFetchMode( \PDO::FETCH_CLASS, 'LQA\ModelStruct' );
+        return $stmt->fetch();
     }
 
     /**
@@ -41,7 +39,7 @@ class ModelDao extends DataAccess_AbstractDao {
             " VALUES ( :label, :pass_type, :pass_options ) ";
 
         $struct = new ModelStruct( array(
-            'label' => @$data['label'] ,
+            'label' => $data['label'] ,
             'pass_type' => $data['passfail']['type'],
             'pass_options' => json_encode( $data['passfail']['options'] )
         ) );
@@ -65,52 +63,43 @@ class ModelDao extends DataAccess_AbstractDao {
      * Recursively create categories and subcategories based on the
      * QA model definition.
      *
-     * @param       $json
-     *
-     * @return ModelStruct
-     *
      */
     public static function createModelFromJsonDefinition( $json ) {
         $model_root = $json['model'];
         $model = ModelDao::createRecord( $model_root );
 
         $default_severities = $model_root['severities'];
-        $categories         = $model_root['categories'];
+        $categories = $model_root['categories'];
 
-        foreach($categories as $category) {
-            self::insertCategory($category, $model->id, null, $default_severities);
+        foreach($categories as $record) {
+            self::insertRecord($record, $model->id, null, $default_severities);
         }
 
         return $model ;
     }
 
-    private static function insertCategory( $category, $model_id, $parent_id, $default_severities) {
-        if ( !array_key_exists('severities', $category) ) {
-            $category['severities'] = $default_severities ;
+    private static function insertRecord($record, $model_id, $parent_id, $default_severities) {
+        if ( !array_key_exists('severities', $record) ) {
+            $record['severities'] = $default_severities ;
         }
 
-        /*
-         * Any other key found in the json array will populate the `options` field
-         */
-        $options = [] ;
+        $options = null ;
 
-        foreach( array_keys( $category ) as $key ) {
-            if ( ! in_array( $key, ['label', 'severities', 'subcategories' ] ) )  {
-                $options[ $key ] = $category[ $key ] ;
-            }
+        if ( INIT::$DQF_ENABLED )  { // TODO: find a better way to avoid this dependency
+            $options = json_encode( ['dqf_id' => $record['dqf_id'] ] ) ;
         }
 
-        $category_record = CategoryDao::createRecord(array(
+        $category = CategoryDao::createRecord(array(
                 'id_model'   => $model_id,
-                'label'      => $category['label'],
-                'options'    => ( empty( $options ) ? null : json_encode( $options ) ),
+                'label'      => $record['label'],
+                'options'    => $options,
                 'id_parent'  => $parent_id,
-                'severities' => json_encode( $category['severities'] )
+                'severities' => json_encode( $record['severities'] )
         ));
 
-        if ( array_key_exists('subcategories', $category) && !empty( $category['subcategories'] ) ) {
-            foreach( $category['subcategories'] as $sub ) {
-                self::insertCategory($sub, $model_id, $category_record->id, $default_severities);
+        if ( array_key_exists('subcategories', $record) && !empty( $record['subcategories'] ) ) {
+            foreach( $record['subcategories'] as $sub ) {
+                self::insertRecord($sub, $model_id, $category->id, $default_severities);
             }
         }
     }

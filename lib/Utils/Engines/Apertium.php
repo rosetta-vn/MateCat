@@ -73,7 +73,7 @@ class Engines_Apertium extends Engines_AbstractEngine {
                 date( "Y-m-d" )
         );
 
-        $mt_res = $mt_match_res->getMatches();
+        $mt_res = $mt_match_res->get_as_array();
 
         return $mt_res;
 

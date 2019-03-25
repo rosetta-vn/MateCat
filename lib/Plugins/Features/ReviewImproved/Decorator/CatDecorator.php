@@ -19,7 +19,7 @@ class CatDecorator extends \AbstractDecorator {
      */
     public function decorate() {
 
-        $project = $this->controller->getChunk()->getProject();
+        $project = $this->controller->getJob()->getProject();
 
         $model = $project->getLqaModel() ;
 
@@ -37,7 +37,12 @@ class CatDecorator extends \AbstractDecorator {
 
         $this->template->footer_show_revise_link = false;
 
-        $this->template->quality_report_href = \INIT::$BASEURL . "revise-summary/{$this->controller->getChunk()->id}-{$this->controller->getChunk()->password}";
+
+        // TODO: complete this with the actual URL
+        $this->template->quality_report_href = \Routes::pluginsBase() .
+            "/review_improved/quality_report/" .
+            "{$this->controller->getJob()->id}/" .
+            "{$this->controller->getJob()->password}";
 
         if ( $this->controller->isRevision() ) {
             $this->template->showReplaceOptionsInSearch = false ;
@@ -56,20 +61,18 @@ class CatDecorator extends \AbstractDecorator {
 
         return json_encode( $out );
     }
-
     private function getOverallQualityClass() {
         $reviews = ChunkReviewDao::findChunkReviewsByChunkIds( array(
             array(
-                $this->controller->getChunk()->id,
-                $this->controller->getChunk()->password
+                $this->controller->getJob()->id,
+                $this->controller->getJob()->password
             )
         ));
 
-        if ( $reviews[0]->is_pass === null ) {
-            return '';
-        } else if ($reviews[0]->is_pass) {
+        if ( $reviews[0]->is_pass ) {
             return 'excellent';
-        } else {
+        }
+        else {
             return 'fail';
         }
     }

@@ -1,20 +1,13 @@
 <?php
 
-use SubFiltering\Filter;
-
 include_once INIT::$MODEL_ROOT . "/queries.php";
 
 class TMSService {
 
     /**
-     * @var FeatureSet
-     */
-    protected $featureSet;
-
-    /**
      * @var string The name of the uploaded TMX
      */
-    protected $name;
+    private $name;
 
     /**
      * @var string The key to be associated to the tmx
@@ -29,27 +22,20 @@ class TMSService {
     /**
      * @var Engines_MyMemory
      */
-    protected $mymemory_engine;
+    private $mymemory_engine;
 
     private $output_type;
 
     /**
      *
-     * @param FeatureSet|null $featureSet
-     *
      * @throws Exception
      */
-    public function __construct( FeatureSet $featureSet = null ) {
+    public function __construct() {
 
         //get MyMemory service
         $this->mymemory_engine = Engine::getInstance( 1 );
 
         $this->output_type = 'translation';
-
-        if( $featureSet == null ){
-            $featureSet = new FeatureSet();
-        }
-        $this->featureSet = $featureSet;
 
     }
 
@@ -219,8 +205,8 @@ class TMSService {
     }
 
     /**
-     * @return array
-     * @throws Exception
+     * Poll this function to know the status of a TMX upload
+     *
      */
     public function tmxUploadStatus() {
 
@@ -395,7 +381,6 @@ class TMSService {
      * @param $userSurname
      *
      * @return Engines_Results_MyMemory_ExportResponse
-     * @throws Exception
      */
     public function requestTMXEmailDownload( $userMail, $userName, $userSurname ){
 
@@ -411,10 +396,6 @@ class TMSService {
 
     }
 
-    /**
-     * @return string
-     * @throws Exception
-     */
     public function downloadGlossary(){
         $fileName = "/tmp/GLOSS_" . $this->tm_key;
         $fHandle = $this->mymemory_engine->downloadExport( $this->tm_key, null, true, $fileName );
@@ -425,20 +406,18 @@ class TMSService {
     /**
      * Export Job as Tmx File
      *
-     * @param          $jid
-     * @param          $jPassword
-     * @param          $sourceLang
-     * @param          $targetLang
+     * @param      $jid
+     * @param      $jPassword
+     * @param      $sourceLang
+     * @param      $targetLang
      *
      * @param int|null $uid
      *
      * @return SplTempFileObject $tmpFile
      *
-     * @throws Exception
      */
     public function exportJobAsTMX( $jid, $jPassword, $sourceLang, $targetLang, $uid = null ) {
 
-        $Filter = Filter::getInstance( $this->featureSet );
         $tmpFile = new SplTempFileObject( 15 * 1024 * 1024 /* 5MB */ );
 
         $tmpFile->fwrite( '<?xml version="1.0" encoding="UTF-8"?>
@@ -518,12 +497,12 @@ class TMSService {
     <tu tuid="' . $row[ 'id_segment' ] . '" creationdate="' . $dateCreate->format( 'Ymd\THis\Z' ) . '" datatype="plaintext" srclang="' . $sourceLang . '">
         <prop type="x-MateCAT-id_job">' . $row[ 'id_job' ] . '</prop>
         <prop type="x-MateCAT-id_segment">' . $row[ 'id_segment' ] . '</prop>
-        <prop type="x-MateCAT-filename">' . $Filter->fromLayer0ToRawXliff( $row[ 'filename' ] ) . '</prop>
+        <prop type="x-MateCAT-filename">' . CatUtils::rawxliff2rawview( $row[ 'filename' ] ) . '</prop>
         <prop type="x-MateCAT-status">' . $row[ 'status' ] . '</prop>
         '. $chunkPropString . '
         '. $tmOrigin .'
         <tuv xml:lang="' . $sourceLang . '">
-            <seg>' . $Filter->fromLayer0ToRawXliff( $row[ 'segment' ] ) . '</seg>
+            <seg>' . CatUtils::rawxliff2rawview( $row[ 'segment' ] ) . '</seg>
         </tuv>';
 
             //if segment is confirmed or we want show all segments
@@ -537,7 +516,7 @@ class TMSService {
 
                 $tmx .= '
         <tuv xml:lang="' . $targetLang . '">
-            <seg>' . $Filter->fromLayer0ToRawXliff( $row[ 'translation' ] ) . '</seg>
+            <seg>' . CatUtils::rawxliff2rawview( $row[ 'translation' ] ) . '</seg>
         </tuv>';
 
             }

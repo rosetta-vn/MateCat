@@ -16,8 +16,7 @@ class CreateProjectWorker extends AbstractWorker  {
 
     protected $sourceLanguageCode ;
 
-
-    protected $reQueueNum = 0 ; // stop at first error
+    protected $reQueueNum = 10 ;
 
     /**
      * @var QueueElement
@@ -28,9 +27,6 @@ class CreateProjectWorker extends AbstractWorker  {
         $this->queueElement = $queueElement ;
         $this->_checkForReQueueEnd( $this->queueElement );
         $this->_checkDatabaseConnection() ;
-
-        /** Wait to ensure slave databases are up to date. */
-        sleep( 4 ) ;
 
         try {
             $struct = new ProjectCreationStruct( json_decode( $queueElement->params, true ) );

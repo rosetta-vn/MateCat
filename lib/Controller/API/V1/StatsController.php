@@ -5,62 +5,49 @@ namespace API\V1;
 
 use API\V2\KleinController;
 use API\V2\Validators\ChunkPasswordValidator;
-use Chunks_ChunkStruct;
 
 class StatsController extends KleinController {
 
     /**
-     * @var Chunks_ChunkStruct
+     * @var ChunkPasswordValidator
      */
-    protected $chunk ;
+    protected $validator ;
 
-    public function setChunk( Chunks_ChunkStruct $chunk ){
-        $this->chunk = $chunk;
-    }
-
-    /**
-     * @throws \API\V2\Exceptions\AuthenticationError
-     * @throws \Exceptions\NotFoundException
-     * @throws \Exceptions\ValidationError
-     * @throws \TaskRunner\Exceptions\EndQueueException
-     * @throws \TaskRunner\Exceptions\ReQueueException
-     */
     public function stats() {
+
+        $job = $this->validator->getChunk();
 
         $wStruct = new \WordCount_Struct();
 
-        $wStruct->setIdJob( $this->chunk->id );
-        $wStruct->setJobPassword( $this->chunk->password );
-        $wStruct->setNewWords( $this->chunk->new_words );
-        $wStruct->setDraftWords( $this->chunk->draft_words );
-        $wStruct->setTranslatedWords( $this->chunk->translated_words );
-        $wStruct->setApprovedWords( $this->chunk->approved_words );
-        $wStruct->setRejectedWords( $this->chunk->rejected_words );
+        $wStruct->setIdJob( $job->id );
+        $wStruct->setJobPassword( $job->password );
+        $wStruct->setNewWords( $job->new_words );
+        $wStruct->setDraftWords( $job->draft_words );
+        $wStruct->setTranslatedWords( $job->translated_words );
+        $wStruct->setApprovedWords( $job->approved_words );
+        $wStruct->setRejectedWords( $job->rejected_words );
 
         $job_stats = \CatUtils::getFastStatsForJob( $wStruct );
 
-        $job_stats['ANALYSIS_COMPLETE'] = $this->chunk->getProject()->analysisComplete() ;
+        $job_stats['ANALYSIS_COMPLETE'] = $job->getProject()->analysisComplete() ;
 
 
         $response = array( 'stats' => $job_stats );
 
-        $this->featureSet = new \FeatureSet();
-        $this->featureSet->loadForProject( $this->chunk->getProject( 60 * 60 ) )  ;
-        $response = $this->featureSet->filter('filterStatsControllerResponse', $response, [ 'chunk' => $this->chunk ] );
+        $featureSet = new \FeatureSet();
+        $featureSet->loadForProject( $job->getProject() )  ;
+        $response = $featureSet->filter('filterStatsControllerResponse', $response, array(
+            'chunk' => $job ) );
 
         $this->response->json( $response ) ;
     }
 
+    protected function validateRequest() {
+        $this->validator->validate();
+    }
+
     protected function afterConstruct() {
-
-        $Validator = ( new ChunkPasswordValidator( $this ) );
-        $Controller = $this;
-        $Validator->onSuccess( function () use ( $Validator, $Controller ) {
-            $Controller->setChunk( $Validator->getChunk() );
-        } );
-
-        $this->appendValidator( $Validator );
-
+        $this->validator = new ChunkPasswordValidator( $this->request );
     }
 
 }

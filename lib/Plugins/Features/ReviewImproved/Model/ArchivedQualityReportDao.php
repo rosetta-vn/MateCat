@@ -16,17 +16,17 @@ class ArchivedQualityReportDao extends \DataAccess_AbstractDao  {
     const TABLE       = "qa_archived_reports";
     const STRUCT_TYPE = "\\Features\\ReviewImproved\\Model\\ArchivedQualityReportStruct" ;
 
-    protected static $auto_increment_field = array('id');
+    protected static $auto_increment_fields = array('id');
 
     protected function _buildResult( $result_array ) {}
 
     public function archiveQualityReport( ArchivedQualityReportStruct $report ) {
-        return self::insertStruct( $report, [ 'no_nulls' => true ] );
+        self::insertStruct( $report, [ 'no_nulls' => true ] );
     }
 
     /**
      * @param Chunks_ChunkStruct $chunk
-     * @param                    $versionNumber
+     * @param                    $versionNumbero
      * @return ArchivedQualityReportStruct
      */
     public function getByChunkAndVersionNumber( Chunks_ChunkStruct $chunk, $versionNumber ) {

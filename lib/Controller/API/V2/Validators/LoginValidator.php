@@ -27,7 +27,7 @@ class LoginValidator extends Base {
 
     }
 
-    public function _validate() {
+    public function validate() {
 
         $user = $this->controller->getUser();
         if( empty( $user ) ){

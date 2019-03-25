@@ -8,7 +8,6 @@
 
 namespace Features\Dqf\Model;
 
-use Features\Dqf\Service\Struct\Response\UserResponseStruct;
 use Jobs\MetadataDao;
 use Jobs_JobStruct;
 use Users_UserDao;
@@ -21,8 +20,8 @@ class CatAuthorizationModel {
 
     const STATUS_NOT_ASSIGNED             = 'not_assigned' ;
     const STATUS_USER_NOT_MATCHING        = 'not_matching' ;
+    const STATUS_USER_NO_CREDENTIALS      = 'no_credentials'  ;
     const STATUS_USER_INVALID_CREDENTIALS = 'invalid_credentials' ;
-    const STATUS_USER_ANONYMOUS           = 'anonymous' ;
 
     /**
      * @var Jobs_JobStruct
@@ -40,38 +39,31 @@ class CatAuthorizationModel {
         $this->dao = new MetadataDao() ;
     }
 
-    public function revokeAssignment() {
-        $this->dao->delete( $this->job->id, $this->job->password, $this->key );
-    }
-
-    public function assignJobToUser( Users_UserStruct $user ) {
+    public function getStatusWithImplicitAssignment( Users_UserStruct $user ) {
         $status = $this->getStatus( $user );
-
         if ( $status == self::STATUS_NOT_ASSIGNED ) {
-            $insertDone = $this->setAuthorizedUser( $user ) ;
-
-            if ( $insertDone ) {
-                return true;
+            $invalidCredentialsStatus = $this->dqfUserCredentialsInvalidStatus( $user );
+            if ( is_null( $invalidCredentialsStatus ) ) {
+                $insertDone = $this->dao->set( $this->job->id, $this->job->password, $this->key, $user->uid );
+                if ( $insertDone ) {
+                    $status = $user->uid ;
+                }
             }
         }
-        return false ;
+        return $status ;
     }
 
     public function getStatus( Users_UserStruct $user ) {
+        $record = $this->dao->get($this->job->id, $this->job->password, $this->key) ;
 
-        if ( $user->isAnonymous() ) {
-            return self::STATUS_USER_ANONYMOUS ;
-        }
-
-        $uid = $this->getAuthorizedUid()  ;
-        if ( ! $uid ) {
+        if ( ! $record ) {
             return self::STATUS_NOT_ASSIGNED ;
         }
-        elseif ( $uid != $user->uid ) {
+        elseif ( $record->value != $user->uid ) {
             return self::STATUS_USER_NOT_MATCHING ;
         }
         else {
-            $storedUser = ( new Users_UserDao())->getByUid( $uid ) ;
+            $storedUser = ( new Users_UserDao())->getByUid( $record->value ) ;
             $dqfCredentialsStatus = $this->dqfUserCredentialsInvalidStatus( $storedUser );
             if ( is_null( $dqfCredentialsStatus ) ) {
                 return $storedUser->uid ;
@@ -79,12 +71,16 @@ class CatAuthorizationModel {
         }
     }
 
-    public function isUserAuthorized( Users_UserStruct $user ) {
-        return $this->getAuthorizedUid() == $user->uid && !is_null( $user->uid ) ;
+    public function isAuthorized( Users_UserStruct $user ) {
+        $status = $this->getStatus($user) ;
     }
 
-    protected function dqfUserCredentialsInvalidStatus( Users_UserStruct $user ) {
+    protected function dqfUserCredentialsInvalidStatus( $user ) {
         $dqfUser = new UserModel( $user );
+
+        if (!$dqfUser->hasCredentials() ) {
+            return self::STATUS_USER_NO_CREDENTIALS ;
+        }
 
         if ( !$dqfUser->validCredentials() ) {
             return self::STATUS_USER_INVALID_CREDENTIALS ;
@@ -94,27 +90,7 @@ class CatAuthorizationModel {
     }
 
     protected function setAuthorizedUser( Users_UserStruct $user ) {
-        return $this->dao->set( $this->job->id, $this->job->password, $this->key, $user->uid );
-    }
-
-    public function getAuthorizedUid() {
-        $record = $this->dao->get( $this->job->id, $this->job->password, $this->key );
-        if ( !$record ) {
-            return false ;
-        }
-        return $record->value ;
-    }
-
-    /**
-     * @return bool|Users_UserStruct
-     */
-    public function getAuthorizedUser() {
-        $uid = $this->getAuthorizedUid();
-        if ( $uid ) {
-            return ( new Users_UserDao() )->getByUid( $uid ) ;
-        } else {
-            return false ;
-        }
+        $this->dao->set($this->job->id, $this->job->password, $this->key, $user->uid );
     }
 
 }

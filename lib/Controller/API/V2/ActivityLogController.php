@@ -34,7 +34,7 @@ class ActivityLogController extends KleinController {
 
     public function lastOnJob(){
 
-        $validator = new Validators\ChunkPasswordValidator( $this );
+        $validator = new Validators\ChunkPasswordValidator( $this->request );
         $validator->validate();
 
         $activityLogDao = new ActivityLogDao();

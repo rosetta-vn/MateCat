@@ -55,16 +55,12 @@ class exportTMXController extends downloadController {
                     'message' => 'Job password missing'
             );
         }
-
-        $this->featureSet = new FeatureSet();
-
     }
 
     /**
      * When Called it perform the controller action to retrieve/manipulate data
      *
      * @return mixed
-     * @throws \Exceptions\NotFoundError
      */
     function doAction() {
 
@@ -75,16 +71,25 @@ class exportTMXController extends downloadController {
         //get job language and data
         //Fixed Bug: need a specific job, because we need The target Language
         //Removed from within the foreach cycle, the job is always the same...
-        $jobData = $this->jobInfo = Chunks_ChunkDao::getByIdAndPassword( $this->jobID, $this->jobPass );
-        $this->featureSet->loadForProject( $this->jobInfo->getProject() );
+        $jobData = $this->jobInfo = Jobs_JobDao::getByIdAndPassword( $this->jobID, $this->jobPass );
 
+        $pCheck = new AjaxPasswordCheck();
+
+        //check for Password correctness
+        if ( empty( $jobData ) || !$pCheck->grantJobAccessByJobData( $jobData, $this->jobPass ) ) {
+            $msg = "Error : wrong password provided for download \n\n " . var_export( $_POST, true ) . "\n";
+            Log::doLog( $msg );
+            Utils::sendErrMailReport( $msg );
+
+            return null;
+        }
 
         $projectData = getProject( $jobData[ 'id_project' ] );
 
         $source = $jobData[ 'source' ];
         $target = $jobData[ 'target' ];
 
-        $tmsService = new TMSService( $this->featureSet );
+        $tmsService = new TMSService();
 
         switch( $this->type ){
             case 'csv':
@@ -112,14 +117,14 @@ class exportTMXController extends downloadController {
         /**
          * Retrieve user information
          */
-        $this->readLoginInfo();
+        $this->checkLogin();
 
         $activity             = new ActivityLogStruct();
         $activity->id_job     = $this->jobID;
         $activity->id_project = $this->jobInfo['id_project'];
         $activity->action     = ActivityLogStruct::DOWNLOAD_JOB_TMX;
         $activity->ip         = Utils::getRealIpAddr();
-        $activity->uid        = $this->user->uid;
+        $activity->uid        = $this->uid;
         $activity->event_date = date( 'Y-m-d H:i:s' );
         Activity::save( $activity );
 

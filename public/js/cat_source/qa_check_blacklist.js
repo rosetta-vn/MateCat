@@ -69,7 +69,7 @@ if (QaCheckBlacklist.enabled() )
                     re , '<span class="blacklistItem">$1</span>'
                 );
             });
-            SegmentActions.replaceEditAreaTextContent(UI.getSegmentId(editarea), UI.getSegmentFileId(editarea), newHTML);
+            editarea.html( newHTML );
         }
 
         restoreSelection();

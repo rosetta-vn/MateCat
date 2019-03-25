@@ -10,40 +10,22 @@ namespace Features\ReviewImproved\Controller\API;
 
 use API\V2\Validators\ChunkPasswordValidator;
 use API\V2\KleinController;
-use Chunks_ChunkStruct;
-use Projects_ProjectStruct;
 use Features\ReviewImproved\Model\ArchivedQualityReportDao;
+use LQA\ChunkReviewDao;
 use Features\ReviewImproved\Model\QualityReportModel ;
-use QualityReport\QualityReportSegmentModel;
 
 class QualityReportController extends KleinController
 {
 
     /**
-     * @var Chunks_ChunkStruct
+     * @var ChunkPasswordValidator
      */
-    protected $chunk;
-
-    /**
-     * @var Projects_ProjectStruct
-     */
-    protected $project;
-
-    /**
-     * @param Chunks_ChunkStruct $chunk
-     *
-     * @return $this
-     */
-    public function setChunk( $chunk ) {
-        $this->chunk = $chunk;
-
-        return $this;
-    }
+    protected $validator;
 
     private $model ;
 
     public function show() {
-        $this->model = new QualityReportModel( $this->chunk );
+        $this->model = new QualityReportModel( $this->validator->getChunk() );
         $this->model->setDateFormat('c');
 
         $this->response->json( array(
@@ -51,56 +33,9 @@ class QualityReportController extends KleinController
         ));
     }
 
-    public function segments() {
-
-        $this->project = $this->chunk->getProject();
-
-        $ref_segment = $this->request->param( 'ref_segment' );
-        $where       = $this->request->param( 'where' );
-        $step        = $this->request->param( 'step' );
-        $filter        = $this->request->param( 'filter' );
-
-        if ( empty( $ref_segment ) ) {
-            $ref_segment = 0;
-        }
-
-        if ( empty( $where ) ) {
-            $where = "after";
-        }
-
-        if ( empty( $step ) ) {
-            $step = 10;
-        }
-
-        $qrSegmentModel = new QualityReportSegmentModel();
-        $options        = [ 'filter' => $filter ];
-        $segments_id    = $qrSegmentModel->getSegmentsIdForQR( $this->chunk, $step, $ref_segment, $where, $options );
-        if ( count( $segments_id ) > 0 ) {
-            $segments = $qrSegmentModel->getSegmentsForQR( $segments_id, $this->chunk );
-
-
-            $this->response->json( [
-                    'files' =>$segments
-            ] );
-        } else {
-            $this->response->json( ['files' =>[] ]);
-        }
-
-    }
-
-    public function general(){
-        $project = $this->chunk->getProject();
-        $this->response->json( [
-                'project' => $project,
-                'job' => $this->chunk,
-        ]);
-    }
-
-
-
     public function versions() {
         $dao = new ArchivedQualityReportDao();
-        $versions = $dao->getAllByChunk( $this->chunk ) ;
+        $versions = $dao->getAllByChunk( $this->validator->getChunk() ) ;
         $response = array();
 
         foreach( $versions as $version ) {
@@ -117,12 +52,11 @@ class QualityReportController extends KleinController
     }
 
     protected function afterConstruct() {
-        $Validator = new ChunkPasswordValidator( $this ) ;
-        $Controller = $this;
-        $Validator->onSuccess( function () use ( $Validator, $Controller ) {
-            $Controller->setChunk( $Validator->getChunk() );
-        } );
-        $this->appendValidator( $Validator );
+        $this->validator = new ChunkPasswordValidator( $this->request );
     }
 
+    protected function validateRequest() {
+        $this->validator->validate();
+
+    }
 }

@@ -16,14 +16,11 @@ use INIT;
 
 class MasterProjectReviewSettings {
 
-    /**
-     * @var ISession
-     */
     protected $session;
 
     protected $remoteProject ;
 
-    public function __construct(ISession $session, CreateProjectResponseStruct $remoteProject ) {
+    public function __construct(Session $session, CreateProjectResponseStruct $remoteProject ) {
         $this->session = $session ;
         $this->remoteProject = $remoteProject ;
     }
@@ -40,7 +37,7 @@ class MasterProjectReviewSettings {
         $url = sprintf( '/project/%s/reviewSettings', $this->remoteProject->dqfId ) ;
 
         $resource = $client->createResource( $url, 'post', [
-                'headers'    => $this->session->filterHeaders( $reviewSettingsData ),
+                'headers'    => $reviewSettingsData->getHeaders(),
                 'formData'   => $reviewSettingsData->getParams(),
                 'pathParams' => $reviewSettingsData->getPathParams()
         ] ) ;

@@ -1,4 +1,3 @@
-let PropTypes = require('prop-types');
 
 class ConfirmMessageModal extends React.Component {
 
@@ -35,7 +34,7 @@ class ConfirmMessageModal extends React.Component {
     }
 }
 SuccessModal.propTypes = {
-    text: PropTypes.string
+    text: React.PropTypes.string
 };
 
 

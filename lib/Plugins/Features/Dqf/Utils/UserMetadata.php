@@ -9,9 +9,6 @@
 namespace Features\Dqf\Utils;
 
 
-use Users\MetadataDao;
-use Users_UserStruct;
-
 class UserMetadata {
 
     const DQF_USERNAME_KEY = 'dqf_username' ;
@@ -20,12 +17,5 @@ class UserMetadata {
     public static function extractCredentials( $user_metadata ) {
         return array( $user_metadata[ self::DQF_USERNAME_KEY ], $user_metadata[ self::DQF_PASSWORD_KEY ] );
     }
-
-    public static function clearCredentials( Users_UserStruct $user ) {
-        $dao = new MetadataDao() ;
-        $dao->delete( $user->uid, self::DQF_USERNAME_KEY ) ;
-        $dao->delete( $user->uid, self::DQF_PASSWORD_KEY ) ;
-    }
-
 
 }

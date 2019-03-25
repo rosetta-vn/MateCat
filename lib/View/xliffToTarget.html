@@ -475,6 +475,7 @@
     //-->
 </script>
 
+<!--<script src="${basepath}public/js/lib/jquery-ui.js"></script>-->
 
 <!--&lt;!&ndash; The Templates plugin is included to render the upload/download listings &ndash;&gt;-->
 <!--<script src="${basepath}public/js/lib/fileupload/tmpl.min.js"></script>-->
@@ -854,7 +855,7 @@
             <ul class="listlang">
 
                 <tal:block tal:repeat="language target_languages">
-                    <li>
+                    <li tal:attributes="class language/top">
                         <input type="checkbox" tal:attributes="value language/code; id language/code"/>
                         <label tal:attributes="for language/name" tal:content="language/name" onClick="return false">---</label>
                     </li>
@@ -881,7 +882,7 @@
             <ul class="listlang">
 
                 <tal:block tal:repeat="language target_languages">
-                    <li>
+                    <li tal:attributes="class language/top">
                         <input type="checkbox" tal:attributes="value language/code; id language/code"/>
                         <label tal:attributes="for language/name" tal:content="language/name" onClick="return false">---</label>
                     </li>

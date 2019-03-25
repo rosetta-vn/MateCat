@@ -240,7 +240,7 @@ class MultiCurlHandler {
         $curl_resource = curl_init();
 
         curl_setopt( $curl_resource, CURLOPT_URL, $url );
-        @curl_setopt_array( $curl_resource, $options );
+        curl_setopt_array( $curl_resource, $options );
 
         $this->curl_options_requests[ $tokenHash ] = $options ;
 
@@ -326,9 +326,6 @@ class MultiCurlHandler {
         return null;
     }
 
-    public function getOptionRequest( $tokenHash ) {
-            return $this->curl_options_requests[ $tokenHash ];
-    }
 
     public function getError( $tokenHash ) {
         $res                = array();

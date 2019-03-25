@@ -25,72 +25,99 @@ class ConversionHandler {
     protected $stopOnFileException = true;
 
     protected $uploadedFiles;
-    public    $uploadError = false;
+    public $uploadError = false;
 
-    protected $_userIsLogged;
-
-    /**
-     * @var FeatureSet
-     */
-    public $features;
 
     public function __construct() {
-        $this->result = [
+        $this->result = array(
                 'code' => 1 //set OK default
-        ];
+        );
     }
 
     public function doAction() {
-
 
         $this->file_name = html_entity_decode( $this->file_name, ENT_QUOTES );
         $file_path       = $this->intDir . DIRECTORY_SEPARATOR . $this->file_name;
 
         if ( !file_exists( $file_path ) ) {
             $this->result[ 'code' ]     = -6; // No Good, Default
-            $this->result[ 'errors' ][] = [
+            $this->result[ 'errors' ][] = array(
                     "code"    => -6,
                     "message" => "Error during upload. Please retry.",
                     'debug'   => FilesStorage::basename_fix( $this->file_name )
-            ];
+            );
 
             return -1;
         }
 
-        $forceXliff = $this->features->filter( 'forceXLIFFConversion', INIT::$FORCE_XLIFF_CONVERSION, $this->_userIsLogged, $file_path );
-
         //XLIFF Conversion management
-        $fileMustBeConverted = DetectProprietaryXliff::fileMustBeConverted( $file_path, $forceXliff );
+        //cyclomatic complexity 9999999 ..... but it works, for now.
+        try {
 
-        switch ( $fileMustBeConverted ) {
+            $fileType = DetectProprietaryXliff::getInfo( $file_path );
 
-            case true:
-                //Continue with conversion
-                break;
-            case false:
-                $this->result[ 'code' ]     = 1; // OK for client, do not convert
-                $this->result[ 'errors' ][] = [ "code" => 0, "message" => "OK" ];
+            if ( DetectProprietaryXliff::isXliffExtension() || DetectProprietaryXliff::getMemoryFileType() ) {
 
-                return 0;
-                break;
-            case -1:
-            default:
-                /**
-                 * Application misconfiguration.
-                 * upload should not be happened, but if we are here, raise an error.
-                 * @see upload.class.php
-                 */
-                unlink( $file_path );
-                $this->result[ 'code' ]     = -7; // No Good, Default
-                $this->result[ 'errors' ][] = [
-                        "code"    => -7,
-                        "message" => 'Matecat Open-Source does not support ' . ucwords( DetectProprietaryXliff::getInfo( $file_path )[ 'proprietary_name' ] ) . '. Use MatecatPro.',
-                        'debug'   => FilesStorage::basename_fix( $this->file_name )
-                ];
+                if ( !empty(INIT::$FILTERS_ADDRESS) ) {
 
-                return -1;
-                break;
+                    //conversion enforce
+                    if ( !INIT::$FORCE_XLIFF_CONVERSION ) {
 
+                        //if file is not proprietary AND Enforce is disabled
+                        //we take it as is
+                        if ( !$fileType[ 'proprietary' ] || DetectProprietaryXliff::getMemoryFileType() ) {
+                            $this->result[ 'code' ] = 1; // OK for client
+
+                            //This file has to be linked to cache!
+                            return 0; //ok don't convert a standard sdlxliff
+                        }
+
+                    } else {
+
+                        // if conversion enforce is active
+                        // we force all xliff files but not files produced by
+                        // SDL Studio or by the MateCAT converters, because we
+                        // can handle them
+                        if ($fileType[ 'proprietary_short_name' ] == 'matecat_converter'
+                                || $fileType[ 'proprietary_short_name' ] == 'trados'
+                                || DetectProprietaryXliff::getMemoryFileType() ) {
+                            $this->result[ 'code' ]     = 1; // OK for client
+                            $this->result[ 'errors' ][] = array( "code" => 0, "message" => "OK" );
+
+                            return 0; //ok don't convert a standard sdlxliff
+                        }
+
+                    }
+
+                } elseif ( $fileType[ 'proprietary' ] ) {
+
+                    unlink( $file_path );
+                    $this->result[ 'code' ]     = -7; // No Good, Default
+                    $this->result[ 'errors' ][] = array(
+                            "code"    => -7,
+                            "message" => 'Matecat Open-Source does not support ' . ucwords( $fileType[ 'proprietary_name' ] ) . '. Use MatecatPro.',
+                            'debug'   => FilesStorage::basename_fix( $this->file_name )
+                    );
+
+                    return -1;
+
+                } elseif ( !$fileType[ 'proprietary' ] ) {
+
+                    $this->result[ 'code' ]     = 1; // OK for client
+                    $this->result[ 'errors' ][] = array( "code" => 0, "message" => "OK" );
+
+                    return 0; //ok don't convert a standard sdlxliff
+
+                }
+
+            }
+
+        } catch ( Exception $e ) { //try catch not used because of exception no more raised
+            $this->result[ 'code' ]     = -8; // No Good, Default
+            $this->result[ 'errors' ][] = array( "code" => -8, "message" => $e->getMessage() );
+            Log::doLog( $e->getMessage() );
+
+            return -1;
         }
 
         //compute hash to locate the file in the cache
@@ -123,21 +150,18 @@ class ConversionHandler {
             //we have to convert it
 
             $ocrCheck = new \Filters\OCRCheck( $this->source_lang );
-            if ( $ocrCheck->thereIsError( $file_path ) ) {
+            if( $ocrCheck->thereIsError( $file_path ) ){
                 $this->result[ 'code' ]     = -21; // No Good, Default
-                $this->result[ 'errors' ][] = [
-                        "code" => -21,
-                        "message" => "File is not valid. OCR for RTL languages is not supported."
-                ];
-
+                $this->result[ 'errors' ][] = array( "code" => -21, "message" =>
+                        "File is not valid. OCR for RTL languages is not supported."
+                );
                 return false; //break project creation
             }
             if ( $ocrCheck->thereIsWarning( $file_path ) ) {
                 $this->result[ 'code' ]     = -20; // No Good, Default
-                $this->result[ 'errors' ][] = [
-                        "code" => -20,
-                        "message" => "File uploaded successfully. Before translating, download the Preview to check the conversion. OCR support for non-latin scripts is experimental."
-                ];
+                $this->result[ 'errors' ][] = array( "code" => -20, "message" =>
+                        "File uploaded successfully. Before translating, download the Preview to check the conversion. OCR support for non-latin scripts is experimental."
+                );
             }
 
             if ( strpos( $this->target_lang, ',' ) !== false ) {
@@ -147,8 +171,8 @@ class ConversionHandler {
                 $single_language = $this->target_lang;
             }
 
-            $convertResult = Filters::sourceToXliff( $file_path, $this->source_lang, $single_language, $this->segmentation_rule );
-            Filters::logConversionToXliff( $convertResult, $file_path, $this->source_lang, $this->target_lang, $this->segmentation_rule );
+            $convertResult = Filters::sourceToXliff( $file_path, $this->source_lang, $single_language, $this->segmentation_rule);
+            Filters::logConversionToXliff($convertResult, $file_path, $this->source_lang, $this->target_lang, $this->segmentation_rule);
 
             if ( $convertResult[ 'isSuccess' ] == 1 ) {
 
@@ -169,11 +193,10 @@ class ConversionHandler {
                     //custom error message passed directly to javascript client and displayed as is
                     $convertResult[ 'errorMessage' ] = "Error: File upload failed because you have MateCat running in multiple tabs. Please close all other MateCat tabs in your browser.";
                     $this->result[ 'code' ]          = -103;
-                    $this->result[ 'errors' ][]      = [
-                            "code"  => -103,
-                            "message" => $convertResult[ 'errorMessage' ],
+                    $this->result[ 'errors' ][]      = array(
+                            "code"  => -103, "message" => $convertResult[ 'errorMessage' ],
                             'debug' => FilesStorage::basename_fix( $this->file_name )
-                    ];
+                    );
 
                     unset( $cachedXliffPath );
 
@@ -184,11 +207,9 @@ class ConversionHandler {
 
                 //custom error message passed directly to javascript client and displayed as is
                 $this->result[ 'code' ]     = -100;
-                $this->result[ 'errors' ][] = [
-                        "code" => -100,
-                        "message" => $convertResult[ 'errorMessage' ],
-                        "debug" => FilesStorage::basename_fix( $this->file_name )
-                ];
+                $this->result[ 'errors' ][] = array(
+                        "code" => -100, "message" => $convertResult[ 'errorMessage' ], "debug" => FilesStorage::basename_fix( $this->file_name )
+                );
             }
 
         }
@@ -214,7 +235,6 @@ class ConversionHandler {
     }
 
     public function extractZipFile() {
-
         $this->file_name = html_entity_decode( $this->file_name, ENT_QUOTES );
         $file_path       = $this->intDir . DIRECTORY_SEPARATOR . $this->file_name;
 
@@ -225,7 +245,6 @@ class ConversionHandler {
         $za->open( $file_path );
 
         try {
-
             $za->createTree();
 
             //get system temporary folder
@@ -235,9 +254,27 @@ class ConversionHandler {
 
             mkdir( $tmpFolder, 0777, true );
 
-            $filesArray = $za->extractFilesInTmp( $tmpFolder );
+            $fileErrors = $za->extractFilesInTmp( $tmpFolder );
 
             $za->close();
+
+            //compose an array that has the same structure of $_FILES
+            $filesArray = array();
+            foreach ( $za->treeList as $fileName ) {
+
+                $filesArray[ $fileName ] = array(
+                        'name'     => $fileName,
+                        'tmp_name' => $tmpFolder . $fileName,
+                        'error'    => null,
+                        'size'     => filesize( $tmpFolder . $fileName )
+                );
+            }
+
+            /***
+             *
+             * ERRORE di un file extratto dallo zip ( isset( $fileErrors[ $fileName ] ) ) ? $fileErrors[ $fileName ] :
+             *
+             **/
 
             // The $this->cookieDir parameter makes Upload get the upload directory from the cookie.
             // In this way it'll find the unzipped files
@@ -254,33 +291,32 @@ class ConversionHandler {
                 }
 
             } catch ( Exception $e ) {
-
-                $this->result = [
-                        'errors' => [
-                                [ "code" => -1, "message" => $e->getMessage() ]
-                        ]
-                ];
-
+                $stdResult                     = array();
+                $this->result                  = array(
+                        'errors' => array(
+                                array( "code" => -1, "message" => $e->getMessage() )
+                        )
+                );
                 $this->api_output[ 'message' ] = $e->getMessage();
 
                 return null;
             }
 
-            return array_map( function( $fileName ) use( $uploadFile ) {
-                return $uploadFile->fixFileName( $fileName, false );
-            }, $za->treeList );
+            return array_map( "Upload::fixFileName", $za->treeList );
 
         } catch ( Exception $e ) {
 
             Log::doLog( "ExtendedZipArchive Exception: {$e->getCode()} : {$e->getMessage()}" );
-            $this->result[ 'errors' ] [] = [
+            $this->result[ 'errors' ] [] = array(
                     'code'    => $e->getCode(),
                     'message' => "Zip error: " . $e->getMessage(),
                     'debug'   => $this->file_name
-            ];
+            );
 
             return null;
         }
+
+        return array();
 
     }
 
@@ -441,24 +477,5 @@ class ConversionHandler {
         $this->stopOnFileException = $stopOnFileException;
     }
 
-    /**
-     * @param FeatureSet $features
-     *
-     * @return $this
-     */
-    public function setFeatures( FeatureSet $features ) {
-        $this->features = $features;
-        return $this;
-    }
-
-    /**
-     * @param mixed $_userIsLogged
-     *
-     * @return $this
-     */
-    public function setUserIsLogged( $_userIsLogged ) {
-        $this->_userIsLogged = $_userIsLogged;
-        return $this;
-    }
 
 }

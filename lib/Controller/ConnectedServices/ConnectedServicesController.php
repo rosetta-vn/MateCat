@@ -11,7 +11,10 @@ namespace ConnectedServices;
 
 use API\App\AbstractStatefulKleinController;
 use API\App\Json\ConnectedService;
-use Exceptions\NotFoundException;
+use API\V2\KleinController;
+use ConnectedServices\ConnectedServiceDao;
+use ConnectedServices\ConnectedServiceStruct;
+use ConnectedServices\GDrive;
 
 class ConnectedServicesController extends AbstractStatefulKleinController  {
 
@@ -74,15 +77,18 @@ class ConnectedServicesController extends AbstractStatefulKleinController  {
     private function __validateOwnership() {
 
         // check for the user to be logged
+        $userDao = new \Users_UserDao() ;
+        $this->user = $userDao->getByUid( $_SESSION['uid'] );
+
         if ( !$this->user ) {
-            throw new NotFoundException('user not found') ;
+            throw new \Exceptions_RecordNotFound('user not found') ;
         }
 
         $serviceDao = new ConnectedServiceDao();
         $this->service = $serviceDao->findServiceByUserAndId( $this->user, $this->request->param('id_service') );
 
         if ( !$this->service ) {
-            throw new NotFoundException( 'service not found' ) ;
+            throw new \Exceptions_RecordNotFound( 'service not found' ) ;
         }
     }
 }

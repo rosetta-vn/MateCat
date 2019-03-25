@@ -20,6 +20,11 @@ class Engines_Results_MyMemory_TMS extends Engines_Results_AbstractResponse {
             if ( is_array( $matches ) and !empty( $matches ) ) {
 
                 foreach ( $matches as $match ) {
+                    $match[ 'raw_segment' ]     = $match[ 'segment' ];
+                    $match[ 'segment' ]         = CatUtils::rawxliff2view( $match[ 'segment' ] );
+                    $match[ 'raw_translation' ] = $match[ 'translation' ];
+                    $match[ 'translation' ]     = CatUtils::rawxliff2view( $match[ 'translation' ] );
+
                     $currMatch        = new Engines_Results_MyMemory_Matches( $match );
                     $this->matches[ ] = $currMatch;
                 }
@@ -30,11 +35,11 @@ class Engines_Results_MyMemory_TMS extends Engines_Results_AbstractResponse {
 
     }
 
-    public function get_matches_as_array( $layerNum = 2 ) {
+    public function get_matches_as_array() {
         $matchesArray = array();
 
         foreach ( $this->matches as $match ) {
-            $item            = $match->getMatches( $layerNum );
+            $item            = $match->get_as_array();
             $matchesArray[ ] = $item;
         }
 

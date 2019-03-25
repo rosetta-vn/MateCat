@@ -35,7 +35,7 @@ module.exports = function(grunt) {
 	    cssBase + 'lxq-style.css',
 	    cssBase + 'lexiqa.css',
         cssBase + 'sass/review_improved.scss',
-        cssBase + 'sass/segmentsFilter.scss',
+        cssBase + 'sass/segment_filter.scss',
         cssBase + 'sass/cattool.scss',
         cssBase + 'sass/speech2text.scss',
         cssBase + 'sass/notifications.scss',
@@ -59,7 +59,7 @@ module.exports = function(grunt) {
 
 
 
-    var es2015Preset = require('babel-preset-env');
+    var es2015Preset = require('babel-preset-es2015');
     var reactPreset = require('babel-preset-react');
 
     function s4() {
@@ -153,21 +153,27 @@ module.exports = function(grunt) {
                 ],
                 dest: buildPath + 'qa-report-improved.js'
             },
-            qualityReport: {
+            manage: {
                 options: {
                     transform: [
-                        [ 'babelify', { presets: [ es2015Preset, reactPreset ] } ]
+                        [ 'babelify', { presets: [ es2015Preset ] } ]
                     ],
-                    browserifyOptions: {
-                        paths: [ __dirname + '/node_modules' ]
-                    }
                 },
                 src: [
-                    basePath + 'cat_source/es6/react/components/quality_report/*.js',
-                    basePath + 'cat_source/es6/react/ajax_utils/quality_report/*.js',
-                    basePath + 'cat_source/es6/react/utils/textUtils.js',
+                    buildPath + 'manage.js'
                 ],
-                dest: buildPath + 'qa-report.js'
+                dest: buildPath + 'manage.min.js'
+            },
+            app: {
+                options: {
+                    transform: [
+                        [ 'babelify', { presets: [ es2015Preset ] } ]
+                    ],
+                },
+                src: [
+                    buildPath + 'app.js'
+                ],
+                dest: buildPath + 'app.min.js'
             }
         },
 
@@ -205,9 +211,9 @@ module.exports = function(grunt) {
                     basePath + 'build/templates.js',
                     basePath + 'cat_source/ui.core.js',
                     basePath + 'cat_source/ui.segment.js',
-                    basePath + 'cat_source/ui.editarea.js',
                     basePath + 'cat_source/ui.scrollsegment.js',
                     basePath + 'cat_source/ui.classes.js',
+                    basePath + 'cat_source/ui.classes.segment_footer.js',
                     basePath + 'cat_source/ui.init.js',
                     basePath + 'cat_source/ui.render.js',
                     basePath + 'cat_source/ui.events.js',
@@ -215,17 +221,15 @@ module.exports = function(grunt) {
                     basePath + 'cat_source/ui.tags.js',
                     basePath + 'cat_source/ui.concordance.js',
                     basePath + 'cat_source/ui.glossary.js',
+                    basePath + 'cat_source/ui.search.js',
 
                     basePath + 'cat_source/qa_check_glossary.js',
                     basePath + 'cat_source/qa_check_blacklist.js',
 
                     basePath + 'cat_source/functions.js', // TODO: why this depends on this position?
-                    basePath + 'cat_source/utils.js', // TODO: why this depends on this position?
-
-                    basePath + 'cat_source/es6/react/ajax_utils/segmentUtils.js',
 
                     basePath + 'cat_source/ui.customization.js',
-                    // basePath + 'cat_source/ui.review.js',
+                    basePath + 'cat_source/ui.review.js',
                     basePath + 'cat_source/ui.offline.js',
                     basePath + 'cat_source/ui.split.js',
                     basePath + 'cat_source/ui.opensegment.js',
@@ -239,56 +243,41 @@ module.exports = function(grunt) {
                     basePath + 'cat_source/lxq.templates.js',
                     basePath + 'cat_source/project_completion.*.js',
                     basePath + 'cat_source/segment_notes.*.js',
-
-                    basePath + 'cat_source/ui.review.js',
-                    basePath + 'cat_source/review/review_simple.js',
-                    basePath + 'cat_source/review_extended/review_extended.default.js',
-                    basePath + 'cat_source/review_extended/review_extended.footer.js',
-                    basePath + 'cat_source/review_extended/review_extended.ui_extension.js',
-                    basePath + 'cat_source/review_extended/review_extended.common_events.js',
-                    basePath + 'cat_source/review_improved/review_improved.js',
-                    basePath + 'cat_source/review_improved/review_improved.common_extensions.js',
-                    basePath + 'cat_source/review_improved/review_improved.common_events.js',
-                    basePath + 'cat_source/review_improved/review_improved.translate_extensions.js',
-                    basePath + 'cat_source/review_improved/review_improved.translate_events.js',
-                    basePath + 'cat_source/review_improved/review_improved.review_extension.js',
-                    basePath + 'cat_source/review_improved/review_improved.review_events.js',
-                    basePath + 'cat_source/review_improved/review_improved.rangy-hack.js',
+                    basePath + 'cat_source/review_improved.js',
+                    basePath + 'cat_source/review_improved.*.js',
 
                     basePath + 'cat_source/segment_filter.js',
                     basePath + 'cat_source/segment_filter.*.js',
 
-                    // basePath + 'cat_source/handlebars-helpers.js',
+                    basePath + 'cat_source/handlebars-helpers.js',
 
                     basePath + 'cat_source/speech2text.js',
                     basePath + 'tm.js',
-                    basePath + 'advancedOptionsTab.js',
+                    basePath + 'advancedOptionsTab.js'
                 ],
                 dest: buildPath + 'app.js'
             },
 
             libs: {
                 src: [
-                    basePath + 'lib/jquery-3.3.1.min.js',
-                    basePath + 'lib/jquery-ui.min.js',
+                    basePath + 'lib/jquery-1.11.0.min.js',
+                    basePath + 'lib/jquery-ui.js',
                     basePath + 'lib/jquery.hotkeys.min.js',
-                    basePath + 'lib/js.cookie.js',
+                    basePath + 'lib/jquery.cookie.js',
+                    basePath + 'lib/jquery.tablesorter-fork-mottie.js',
+                    basePath + 'lib/jquery.tooltipster.min.js',
                     basePath + 'lib/jquery.powertip.min.js',
                     basePath + 'lib/jquery-dateFormat.min.js',
                     basePath + 'lib/handlebars.runtime-v4.0.5.js',
-                    basePath + 'lib/jquery.waypoints.min.js',
+                    basePath + 'lib/waypoints.min.js',
                     basePath + 'lib/diff_match_patch.js',
                     basePath + 'lib/rangy-core.js',
                     basePath + 'lib/rangy-selectionsaverestore.js',
-                    basePath + 'lib/base64.min.js',
                     basePath + 'lib/moment.min.js',
+                    basePath + 'lib/handlebars.runtime-v4.0.5.js',
                     basePath + 'lib/lokijs.min.js',
-                    basePath + 'lib/lodash.min.js',
                     basePath + 'lib/sprintf.min.js',
                     basePath + 'lib/calendar.min.js',
-                    basePath + 'lib/imagesloaded.min.js',
-                    basePath + 'lib/jquery.atwho.min.js',
-                    basePath + 'lib/jquery.caret.min.js',
                     gruntDir + 'semantic/dist/semantic.min.js'
                 ],
                 dest: buildPath + 'libs.js'
@@ -296,11 +285,11 @@ module.exports = function(grunt) {
 
             libs_upload: {
                 src: [
-                    basePath + 'lib/jquery-3.3.1.min.js',
-                    basePath + 'lib/jquery-ui.min.js',
-                    basePath + 'lib/lodash.min.js',
-                    basePath + 'lib/sprintf.min.js',
-                    basePath + 'lib/js.cookie.js',
+                    basePath + 'lib/jquery-1.11.0.min.js',
+                    basePath + 'lib/jquery-ui.js',  // jQuery UI 1.11
+
+                    basePath + 'lib/jquery.cookie.js',
+                    basePath + 'lib/jquery.tablesorter-fork-mottie.js',
                     basePath + 'lib/jquery.powertip.min.js',
                     // <!-- The Templates plugin is included to render the upload/download listings -->
                     basePath + 'lib/fileupload/tmpl.min.js',
@@ -338,7 +327,10 @@ module.exports = function(grunt) {
 
             common: {
                 src: [
+                    basePath + 'lib/lodash.min.js',
+                    basePath + 'lib/sprintf.min.js',
                     basePath + 'common.js',
+
                     basePath + 'user_store.js',
                     basePath + 'login.js'
                 ],
@@ -494,26 +486,6 @@ module.exports = function(grunt) {
                 ],
                 dest: cssBase + 'build/analyze-build.css'
             },
-            distQR: {
-                options : {
-                    sourceMap : false,
-                    includePaths: [ cssBase, cssBase + 'libs/' ]
-                },
-                src: [
-                    cssBase + 'sass/quality-report.scss'
-                ],
-                dest: cssBase + 'build/quality_report.css'
-            },
-            distIcons: {
-                options : {
-                    sourceMap : false,
-                    includePaths: [ cssBase ]
-                },
-                src: [
-                    cssBase + 'sass/commons/icons_main.scss'
-                ],
-                dest: cssBase + 'build/icons.css'
-            },
             distSemantic: {
                 options : {
                     sourceMap : false,
@@ -575,7 +547,6 @@ module.exports = function(grunt) {
         }
     });
 
-    grunt.loadNpmTasks('grunt-notify');
     grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-contrib-jshint');
@@ -584,6 +555,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-handlebars');
     grunt.loadNpmTasks('grunt-sass');
     grunt.loadNpmTasks('grunt-browserify');
+    grunt.loadNpmTasks('grunt-contrib-uglify');
 
     // Define your tasks here
     grunt.registerTask('default', ['jshint']);
@@ -601,7 +573,6 @@ module.exports = function(grunt) {
         'browserify:libs',
         'browserify:components',
         'browserify:qaReportsVersions',
-        'browserify:qualityReport',
         'concat:libs',
         'concat:libs_upload',
         'concat:semantic',
@@ -662,13 +633,5 @@ module.exports = function(grunt) {
         // 'strip',
         'sass',
         'replace:css'
-    ]);
-
-    grunt.registerTask('only-react', [
-        'browserify:components',
-    ]);
-
-    grunt.registerTask('test', [
-        'browserify:test'
     ]);
 };

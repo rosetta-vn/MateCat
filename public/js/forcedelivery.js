@@ -160,7 +160,7 @@ ForceDelivery = {
 
 
 function setTimezoneSelect() {
-    var timezoneToShow = Cookies.get( "matecat_timezone" );
+    var timezoneToShow = $.cookie( "matecat_timezone" );
     if ( !timezoneToShow) {
         timezoneToShow = -1 * ( new Date().getTimezoneOffset() / 60 );
     }
@@ -1457,7 +1457,7 @@ var EYE = {
             });
         },
         getDate: function(formated) {
-            if (this.length > 0) {
+            if (this.size() > 0) {
                 return prepareDate($('#' + $(this).data('datepickerId')).data('datepicker'))[formated ? 0 : 1];
             }
         },

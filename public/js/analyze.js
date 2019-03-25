@@ -14,8 +14,7 @@ UI = {
             loggedUser: config.isLoggedIn,
             showSubHeader: false,
             showModals: false,
-            changeTeam: false,
-            user: APP.USER.STORE
+            changeTeam: false
         }), headerMountPoint);
 
         var analyzeMountPoint = $("#analyze-container")[0];

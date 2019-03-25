@@ -1,5 +1,9 @@
 $.extend(UI, {
 
+    // Coupon : calledd now from the outsourceVendor Component
+    populateOutsourceForm : function() {
+    },
+
     sendJobToTranslator: function (email, date, timezone, job, project) {
         API.JOB.sendTranslatorRequest(email, date, timezone, job).done(function (data) {
             APP.ModalWindow.onCloseModal();
@@ -8,7 +12,7 @@ $.extend(UI, {
             } else {
                 UI.showShareTranslatorError();
             }
-        }).fail(function () {
+        }).error(function () {
             UI.showShareTranslatorError();
         });
 
@@ -21,7 +25,7 @@ $.extend(UI, {
             var oldDate = new Date(job.translator.delivery_date);
             if (oldDate.getTime() !== newDate.getTime()) {
                 message = this.shareToTranslatorDateChangeNotification(mail, oldDate, newDate);
-            } else if (job.translator.email !== mail) {
+            } else if (job.translator !== mail) {
                 message = this.shareToTranslatorMailChangeNotification(mail);
             } else {
                 message = this.shareToTranslatorNotification(mail, job);
@@ -33,7 +37,7 @@ $.extend(UI, {
             title: message.title,
             text: message.text,
             type: 'success',
-            position: 'bl',
+            position: 'tc',
             allowHtml: true,
             timer: 10000
         };
@@ -99,7 +103,7 @@ $.extend(UI, {
             title: 'Problems sending the job',
             text: 'Please try later or contact <a href="mailto:support@matecat.com">support@matecat.com</a>',
             type: 'error',
-            position: 'bl',
+            position: 'tc',
             allowHtml: true,
             timer: 10000
         };
