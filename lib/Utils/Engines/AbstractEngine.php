@@ -21,7 +21,6 @@ abstract class Engines_AbstractEngine implements Engines_EngineInterface {
 
     protected $curl_additional_params = array();
 
-    const IOS_STRINGS_REGEXP = '#%[\']*[\+]*(([0-9]+)?\.[0-9]+|[0-9]+\$|[0-9]+)*(h{1,2}|l{1,2}|[qLztj])?[@%dDuUxXoOfFeEgGcCsSpaAi]{1}#';
     protected $_patterns_found = array();
 
     public $doLog = true;
@@ -30,6 +29,8 @@ abstract class Engines_AbstractEngine implements Engines_EngineInterface {
     protected $_skipAnalysis = false;
 
     protected $featureSet ;
+
+    const GET_REQUEST_TIMEOUT = 10;
 
     public function __construct( $engineRecord ) {
         $this->engineRecord = $engineRecord;
@@ -45,6 +46,12 @@ abstract class Engines_AbstractEngine implements Engines_EngineInterface {
         );
 
         $this->featureSet = new FeatureSet() ;
+    }
+
+    public function setFeatureSet( FeatureSet $fSet = null ){
+        if( $fSet != null ){
+            $this->featureSet = $fSet;
+        }
     }
 
     /**
@@ -78,38 +85,11 @@ abstract class Engines_AbstractEngine implements Engines_EngineInterface {
      * @return string
      */
     public function _preserveSpecialStrings( $_string ) {
-
-        preg_match_all( self::IOS_STRINGS_REGEXP, $_string, $matches );
-        $matches = $matches[ 0 ];
-
-        $placeholders = array();
-        for ( $i = 0; $i < count( $matches ); $i++ ) {
-            $placeholders[ ] = CatUtils::generate_password();
-        }
-
-        $this->_patterns_found = @array_combine(
-                $matches,
-                $placeholders
-        );
-
-        if( ! is_array( $this->_patterns_found ) ) return $_string;
-        foreach ( $this->_patterns_found as $str => $placeholder ) {
-            $_string = str_replace( $str, $placeholder, $_string );
-        }
-
         return $_string;
     }
 
     public function _resetSpecialStrings( $_string ) {
-
-        if( ! is_array( $this->_patterns_found ) ) return $_string;
-
-        foreach ( $this->_patterns_found as $str => $placeholder ) {
-            $_string = str_ireplace( $placeholder, $str, $_string );
-        }
-
         return $_string;
-
     }
 
     /**
@@ -227,7 +207,7 @@ abstract class Engines_AbstractEngine implements Engines_EngineInterface {
             $url .= http_build_query( $parameters );
             $curl_opt = array(
                     CURLOPT_HTTPGET => true,
-                    CURLOPT_TIMEOUT => 10
+                    CURLOPT_TIMEOUT => static::GET_REQUEST_TIMEOUT
             );
         }
 
@@ -270,6 +250,15 @@ abstract class Engines_AbstractEngine implements Engines_EngineInterface {
 
     public function getName() {
         return $this->engineRecord->name;
+    }
+
+    /**
+     * Read Only
+     *
+     * @return EnginesModel_EngineStruct
+     */
+    public function getEngineRow(){
+        return clone $this->engineRecord;
     }
 
 }

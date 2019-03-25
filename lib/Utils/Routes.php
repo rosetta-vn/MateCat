@@ -72,6 +72,12 @@ class Routes {
         return "$host/api/app/user/confirm/$confirmation_token";
     }
 
+    public static function qualityReport( $id_job, $password, $options = [] ) {
+        $host = self::httpHost( $options );
+
+        return "$host/api/v2/jobs/{$id_job}/{$password}/quality-report";
+    }
+
     /**
      * @param       $id_job
      * @param       $password
@@ -100,7 +106,7 @@ class Routes {
             $params[ 'filename' ] = $filename;
         }
 
-        return "$host/?action=downloadOriginal&" . http_build_query( $params, null, null, PHP_QUERY_RFC3986 ) ;
+        return "$host/?action=downloadOriginal&" . http_build_query( $params, null, '&', PHP_QUERY_RFC3986 ) ;
     }
 
 
@@ -118,7 +124,7 @@ class Routes {
             $params[ 'filename' ] = $filename;
         }
 
-        return "$host/?action=downloadFile&" . http_build_query( $params, null, null, PHP_QUERY_RFC3986 );
+        return "$host/?action=downloadFile&" . http_build_query( $params, null, '&', PHP_QUERY_RFC3986 ) ;
     }
 
     public static function revise( $project_name, $id_job, $password, $source, $target, $options = array() ) {

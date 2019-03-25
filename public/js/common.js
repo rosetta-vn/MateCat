@@ -23,9 +23,11 @@ APP = {
             }
         } ).on( 'click', '.modal[data-type=confirm] .btn-ok:not(.disabled), .modal[data-type=confirm_checkbox] .btn-ok:not(.disabled)', function ( e ) {
             e.preventDefault();
-            var dataType = $('.modal' ).attr('data-type');
+            var dataType = $(this).closest('.modal' ).attr('data-type');
 
-            if ( !$( '.modal[data-type='+dataType+']' ).hasClass( 'closeOnSuccess' ) ) APP.closePopup();
+            if ( $( '.modal[data-type='+dataType+']' ).hasClass( 'closeOnSuccess' ) ) {
+                APP.closePopup();
+            }
             if ( $( this ).attr( 'data-callback' ) ) {
                 if ( typeof UI[$( this ).attr( 'data-callback' )] === 'function' ) {
                     var context = $( this ).attr( 'data-context' ) || '';
@@ -121,26 +123,6 @@ APP = {
             checkbox_label: options['checkbox-label']
         } );
     },
-    initMessageBar: function () {
-        if ( !$( 'header #messageBar' ).length ) {
-            console.log( 'no messageBar found' );
-            $( 'header' ).prepend( '<div id="messageBar"><span class="msg"></span><a href="#" class="close"></a></div>' );
-        }
-        $( "body" ).on( 'click', '#messageBar .close', function ( e ) {
-            e.preventDefault();
-            $( 'body' ).removeClass( 'incomingMsg' );
-            $( '#messageBar' ).html( '<span class="msg"></span><a href="#" class="close"></a>' );
-        } );
-    },
-    showMessage: function ( options ) {
-        $( '#messageBar .msg' ).html( options.msg );
-        if ( typeof options.fixed != 'undefined' ) {
-            $( '#messageBar' ).addClass( 'fixed' );
-        } else {
-            $( '#messageBar' ).removeClass( 'fixed' );
-        }
-        $( 'body' ).addClass( 'incomingMsg' );
-    },
     doRequest: function ( req, log ) {
 
         var logTxt = (typeof log == 'undefined') ? '' : '&type=' + log;
@@ -189,8 +171,10 @@ APP = {
                 '<div class="popup">' +
                 ' <a href="javascript:;" class="x-popup remove"></a>' +
                 ' <h1></h1>' +
-                ' <p></p>' +
-                '</div>';
+                ' <p class="text-container-top"></p>' +
+                ' <p class="buttons-popup-container button-aligned-right">' +
+                '</p>' +
+            '</div>';
 
         _tpl_button = '' +
                 '<a href="javascript:;" class="btn-ok">Ok</a>';
@@ -208,9 +192,7 @@ APP = {
 
         var renderOkButton = function ( options ) {
             var filled_tpl = $(_tpl_button);
-            filled_tpl.attr("class","")
-                    .addClass( 'btn-ok' )
-                    .html("Ok");
+
 
             if ( typeof options[ 'callback'] != 'undefined' ) {
                 filled_tpl.data( 'callback', options['callback'] )
@@ -294,7 +276,7 @@ APP = {
 
             if ( typeof options['checkbox_label'] != 'undefined' ) {
                 filled_tpl.find('.dont_show + label' )
-                        .html("Don't show this dialog again for the current job");
+                        .html(" Don't show this dialog again for the current job");
             }
             return filled_tpl;
         };
@@ -320,7 +302,7 @@ APP = {
             }
 
             if ( typeof options['content'] != 'undefined' ) {
-                filled_tpl.find( 'p' ).html( options['content'] );
+                filled_tpl.find( 'p.text-container-top' ).html( options['content'] );
             }
 
             return filled_tpl;
@@ -352,7 +334,7 @@ APP = {
                         data( 'type', options['type'] );
                 switch ( options['type'] ) {
                     case 'alert' :
-                        filled_tpl.find( '.popup' )
+                        filled_tpl.find( '.popup .buttons-popup-container' )
                                 .append( renderOkButton( {
                                             'context' : options['context'],
                                             'callback': options['onConfirm'],
@@ -364,13 +346,13 @@ APP = {
                     case 'confirm':
                     case 'confirm_checkbox' :
                         if ( options['type'] == 'confirm_checkbox' ) {
-                            filled_tpl.find( '.popup p' )
+                            filled_tpl.find( '.popup p.buttons-popup-container' )
                                     .append( renderCheckbox( options ) );
                         }
 
                         filled_tpl.find( '.popup' )
                                 .addClass('confirm_checkbox')
-                                .addClass('popup-confirm')
+                                .addClass('popup-confirm').find('.buttons-popup-container')
                                 .append( renderCancelButton( {
                                     'context' : options['context'],
                                     'callback': options['onCancel'],
@@ -416,7 +398,7 @@ APP = {
                         break;
 
                     case 'free':
-                        filled_tpl.find( '.popup' ).append(
+                        filled_tpl.find( '.popup .buttons-popup-container' ).append(
                                 renderButton( {
                                     'callback': this.callback,
                                     'btn-type': this.type,
@@ -469,7 +451,7 @@ APP = {
     },
 
     fitText: function ( container, child, limitHeight, escapeTextLen, actualTextLow, actualTextHi ) {
-        if ( typeof escapeTextLen == 'undefined' ) escapeTextLen = 12;
+        if ( typeof escapeTextLen == 'undefined' ) escapeTextLen = 4;
         if ( typeof $( child ).attr( 'data-originalText' ) == 'undefined' ) {
             $( child ).attr( 'data-originalText', $( child ).text() );
         }
@@ -497,10 +479,10 @@ APP = {
 
         child.text( actualTextLow + '[...]' + actualTextHi );
 
-        var test = true;
+        var loop = true;
         // break recursion for browser width resize below 1024 px to avoid infinite loop and stack overflow
-        while ( container.height() >= limitHeight && test == true ) {
-            test = this.fitText(container, child, limitHeight, escapeTextLen, actualTextLow, actualTextHi);
+        while ( container.height() >= limitHeight && loop == true ) {
+            loop = this.fitText(container, child, limitHeight, escapeTextLen, actualTextLow, actualTextHi);
         }
         return false;
 
@@ -581,6 +563,12 @@ APP = {
     removeNotification: function (notification) {
         if (APP.notificationBox) {
             APP.notificationBox.removeNotification(notification);
+        }
+    },
+
+    removeAllNotifications: function () {
+        if (APP.notificationBox) {
+            APP.notificationBox.removeAllNotifications();
         }
     },
 
@@ -675,7 +663,7 @@ APP = {
             var messages = JSON.parse(config.global_message);
             $.each(messages, function () {
                 var elem = this;
-                if (typeof $.cookie('msg-' + this.token) == 'undefined' && ( new Date(this.expire) > ( new Date() ) )) {
+                if (typeof Cookies.get('msg-' + this.token) == 'undefined' && ( new Date(this.expire) > ( new Date() ) )) {
                     var notification = {
                         title: 'Notice',
                         text: this.msg,
@@ -685,7 +673,7 @@ APP = {
                         allowHtml: true,
                         closeCallback: function () {
                             var expireDate = new Date(elem.expire);
-                            $.cookie('msg-' + elem.token, '', {expires: expireDate});
+                            Cookies.set('msg-' + elem.token, '', {expires: expireDate});
                         }
                     };
                     APP.addNotification(notification);
@@ -748,7 +736,7 @@ APP = {
             downloadTimer = window.setInterval(function () {
 
                 //check for cookie
-                var token = $.cookie( downloadToken );
+                var token = Cookies.get( downloadToken );
 
                 //if the cookie is found, download is completed
                 //remove iframe an re-enable download button
@@ -778,7 +766,7 @@ APP = {
                     }
 
                     window.clearInterval( downloadTimer );
-                    $.cookie( downloadToken, null, { path: '/', expires: -1 });
+                    Cookies.set( downloadToken, null, { path: '/', expires: -1 });
                     iFrameDownload.remove();
                 }
 
@@ -828,7 +816,9 @@ APP = {
         }
 
         var winName ;
-
+        if (UI.isSafari) {
+            var windowReference = window.open();
+        }
         var driveUpdateDone = function(data) {
             if( !data.urls || data.urls.length === 0 ) {
                 APP.alert({msg: "MateCat was not able to update project files on Google Drive. Maybe the project owner revoked privileges to access those files. Ask the project owner to login again and grant Google Drive privileges to MateCat."});
@@ -840,12 +830,14 @@ APP = {
 
             $.each( data.urls, function(index, item) {
                 winName = 'window' + item.localId ;
-
-                if ( typeof window.googleDriveWindows[ winName ] != 'undefined' && window.googleDriveWindows[ winName ].opener != null ) {
+                if (UI.isSafari) {
+                    windowReference.location = item.alternateLink;
+                } else if ( typeof window.googleDriveWindows[ winName ] != 'undefined' && typeof window.googleDriveWindows[ winName ] != 'null' && window.googleDriveWindows[ winName ].location != null ) {
                     window.googleDriveWindows[ winName ].location.href = item.alternateLink ;
                     window.googleDriveWindows[ winName ].focus();
                 } else {
                     window.googleDriveWindows[ winName ] = window.open( item.alternateLink );
+
                 }
             });
         };
@@ -877,6 +869,7 @@ APP = {
             var team = this.getLastTeamSelected(APP.USER.STORE.teams);
             $('.user-menu-container .organization-name').text(team.name);
         } else {
+            APP.USER.loadUserData();
             setTimeout(this.setTeamNameInMenu.bind(this), 500);
         }
     },

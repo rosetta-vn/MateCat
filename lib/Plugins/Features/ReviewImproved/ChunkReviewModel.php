@@ -17,10 +17,10 @@ class ChunkReviewModel
     /**
      * @var \LQA\ChunkReviewStruct
      */
-    private $chunk_review;
+    protected $chunk_review;
 
 
-    private $penalty_points;
+    protected $penalty_points;
 
 
     public function __construct( ChunkReviewStruct $chunk_review ) {
@@ -97,6 +97,14 @@ class ChunkReviewModel
         }
     }
 
+    public function getPenaltyPoints(){
+        return $this->chunk_review->penalty_points;
+    }
+
+    public function getReviewedWordsCount(){
+        return $this->chunk_review->reviewed_words_count;
+    }
+
     /**
      *
      * @throws \Exception
@@ -109,8 +117,12 @@ class ChunkReviewModel
 
         $this->chunk_review->is_pass = ( $score_per_mille <= $lqa_model->getLimit() ) ;
 
-        ChunkReviewDao::updateStruct( $this->chunk_review, array(
+        $update_result = ChunkReviewDao::updateStruct( $this->chunk_review, array(
             'fields' => array('reviewed_words_count', 'is_pass', 'penalty_points'))
+        );
+
+        $this->chunk_review->getChunk()->getProject()->getFeatures()->run(
+                'chunkReviewUpdated', $this->chunk_review, $update_result, $this
         );
     }
 

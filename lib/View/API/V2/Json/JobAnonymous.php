@@ -10,23 +10,41 @@
 namespace API\V2\Json;
 
 
-use API\App\Json\OutsourceConfirmation;
-use CatUtils;
-use Jobs_JobStruct;
-use Langs_Languages;
-use ManageUtils;
-use WordCount_Struct;
+use Chunks_ChunkStruct;
+use Users_UserStruct;
 
 class JobAnonymous extends Job {
 
     /**
-     * @param $jStruct Jobs_JobStruct
+     * @param Users_UserStruct $user
+     *
+     * @return $this
+     */
+    public function setUser( Users_UserStruct $user ) {
+        return $this;
+    }
+
+    /**
+     * @param bool $called_from_api
+     *
+     * @return $this
+     */
+    public function setCalledFromApi( $called_from_api ) {
+        return $this;
+    }
+
+    /**
+     * @param                         $jStruct Chunks_ChunkStruct
+     *
+     * @param \Projects_ProjectStruct $project
+     * @param \FeatureSet             $featureSet
      *
      * @return array
+     * @throws \Exception
      */
-    public function renderItem( Jobs_JobStruct $jStruct ) {
+    public function renderItem( Chunks_ChunkStruct $jStruct, \Projects_ProjectStruct $project, \FeatureSet $featureSet ) {
 
-        $jobJson = parent::renderItem( $jStruct );
+        $jobJson = parent::renderItem( $jStruct, $project, $featureSet );
 
         unset( $jobJson[ 'translator' ] );
         unset( $jobJson[ 'owner' ] );

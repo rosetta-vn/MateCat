@@ -1,6 +1,6 @@
 <?php
 
-use Contribution\ContributionStruct,
+use Contribution\ContributionSetStruct,
         Contribution\Set,
         TaskRunner\Commons\ContextList,
         TaskRunner\Commons\QueueElement;
@@ -26,7 +26,7 @@ class SetContributionWorkerTest extends AbstractTest implements SplObserver {
     }
 
     /**
-     * @var ContributionStruct
+     * @var ContributionSetStruct
      */
     protected $contributionStruct;
 
@@ -66,13 +66,13 @@ class SetContributionWorkerTest extends AbstractTest implements SplObserver {
         $curl->multiExec();
 
         //Queue submission
-        $this->contributionStruct = new ContributionStruct();
+        $this->contributionStruct = new ContributionSetStruct();
 
         $this->contributionStruct->fromRevision         = true;
         $this->contributionStruct->id_job               = 1999999;
         $this->contributionStruct->job_password         = "1d7903464318";
-        $this->contributionStruct->segment              = \CatUtils::view2rawxliff( '<g id="pt2">WASHINGTON </g><g id="pt3">— The Treasury Department and Internal Revenue Service today requested public comment on issues relating to the shared responsibility provisions included in the Affordable Care Act that will apply to certain employers starting in 2014.</g>' );
-        $this->contributionStruct->translation          = \CatUtils::view2rawxliff( '<g id="pt2">WASHINGTON </g><g id="pt3">- Il Dipartimento del Tesoro e Agenzia delle Entrate oggi ha chiesto un commento pubblico su questioni relative alle disposizioni di responsabilità condivise incluse nel Affordable Care Act che si applicheranno a certi datori di lavoro a partire dal 2014.</g>' );
+        $this->contributionStruct->segment              = \CatUtils::layer2ToLayer0( '<g id="pt2">WASHINGTON </g><g id="pt3">— The Treasury Department and Internal Revenue Service today requested public comment on issues relating to the shared responsibility provisions included in the Affordable Care Act that will apply to certain employers starting in 2014.</g>' );
+        $this->contributionStruct->translation          = \CatUtils::layer2ToLayer0( '<g id="pt2">WASHINGTON </g><g id="pt3">- Il Dipartimento del Tesoro e Agenzia delle Entrate oggi ha chiesto un commento pubblico su questioni relative alle disposizioni di responsabilità condivise incluse nel Affordable Care Act che si applicheranno a certi datori di lavoro a partire dal 2014.</g>' );
         $this->contributionStruct->api_key              = \INIT::$MYMEMORY_API_KEY;
         $this->contributionStruct->uid                  = 1234;
         $this->contributionStruct->oldTranslationStatus = 'NEW';
@@ -149,9 +149,9 @@ class SetContributionWorkerTest extends AbstractTest implements SplObserver {
         $_worker->setEngine( $stubEngine );
 
         /**
-         * @var $queueElement Contribution\ContributionStruct
+         * @var $queueElement Contribution\ContributionSetStruct
          */
-        $mockParams = $this->getMockBuilder( '\Contribution\ContributionStruct' )->getMock();
+        $mockParams = $this->getMockBuilder( '\Contribution\ContributionSetStruct' )->getMock();
 
         $mockParams->expects( $this->once() )
                 ->method( 'getJobStruct' )
@@ -251,9 +251,9 @@ class SetContributionWorkerTest extends AbstractTest implements SplObserver {
         $_worker->setEngine( $stubEngine );
 
         /**
-         * @var $queueElement Contribution\ContributionStruct
+         * @var $queueElement Contribution\ContributionSetStruct
          */
-        $mockParams = $this->getMockBuilder( '\Contribution\ContributionStruct' )->getMock();
+        $mockParams = $this->getMockBuilder( '\Contribution\ContributionSetStruct' )->getMock();
 
         $mockParams->expects( $this->once() )
                 ->method( 'getJobStruct' )
@@ -317,9 +317,9 @@ class SetContributionWorkerTest extends AbstractTest implements SplObserver {
         $_worker->setContext( $this->contextList->list[ 'CONTRIBUTION' ] );
 
         /**
-         * @var $queueElement Contribution\ContributionStruct
+         * @var $queueElement Contribution\ContributionSetStruct
          */
-        $mockParams = $this->getMockBuilder( '\Contribution\ContributionStruct' )->getMock();
+        $mockParams = $this->getMockBuilder( '\Contribution\ContributionSetStruct' )->getMock();
 
         $mockParams->expects( $this->once() )
                 ->method( 'getJobStruct' )
@@ -408,9 +408,9 @@ class SetContributionWorkerTest extends AbstractTest implements SplObserver {
         $_worker->setEngine( $stubEngine );
 
         /**
-         * @var $queueElement Contribution\ContributionStruct
+         * @var $queueElement Contribution\ContributionSetStruct
          */
-        $mockParams = $this->getMockBuilder( '\Contribution\ContributionStruct' )->getMock();
+        $mockParams = $this->getMockBuilder( '\Contribution\ContributionSetStruct' )->getMock();
 
         $mockParams->expects( $this->once() )
                 ->method( 'getJobStruct' )

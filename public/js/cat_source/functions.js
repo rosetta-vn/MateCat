@@ -1,94 +1,4 @@
-/*
-	Component: functions
- */
 
-function htmlEncode(value) {
-	if (value) {
-		return jQuery('<div />').text(value).html();
-	} else {
-		return '';
-	}
-}
-
-function htmlDecode(value) {
-	if (value) {
-		return $('<div />').html(value).text();
-	} else {
-		return '';
-	}
-}
-
-function utf8_to_b64(str) { // currently unused
-	return window.btoa(unescape(encodeURIComponent(str)));
-}
-
-function b64_to_utf8(str) { // currently unused
-	return decodeURIComponent(escape(window.atob(str)));
-}
-
-function escapeRegExp(str) {
-	return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
-}
-
-// START Get clipboard data at paste event (SEE http://stackoverflow.com/a/6804718)
-function handlepaste(elem, e) {
-	var savedcontent = elem.innerHTML;
-
-	if (e && e.clipboardData && e.clipboardData.getData) {// Webkit - get data from clipboard, put into editdiv, cleanup, then cancel event
-		if (/text\/html/.test(e.clipboardData.types)) {
-			txt = (UI.tagSelection) ? UI.tagSelection : htmlEncode(e.clipboardData.getData('text/plain'));
-			elem.innerHTML = txt;
-		}
-		else if (/text\/plain/.test(e.clipboardData.types)) {
-			txt = (UI.tagSelection) ? UI.tagSelection : htmlEncode(e.clipboardData.getData('text/plain'));
-			elem.innerHTML = txt;
-		}
-		else {
-			elem.innerHTML = "";
-		}
-		waitforpastedata(elem, savedcontent);
-		if (e.preventDefault) {
-			e.stopPropagation();
-			e.preventDefault();
-		}
-		return false;
-	}
-	else {// Everything else - empty editdiv and allow browser to paste content into it, then cleanup
-		elem.innerHTML = "";
-		waitforpastedata(elem, savedcontent);
-		return true;
-	}
-}
-
-function waitforpastedata(elem, savedcontent) {
-
-	if (elem.childNodes && elem.childNodes.length > 0) {
-		processpaste(elem, savedcontent);
-	}
-	else {
-		var that = {
-			e: elem,
-			s: savedcontent
-		};
-		that.callself = function() {
-			waitforpastedata(that.e, that.s);
-		};
-		setTimeout(that.callself, 20);
-	}
-}
-
-function processpaste(elem, savedcontent) {
-	var pasteddata = elem.innerHTML;
-
-	//^^Alternatively loop through dom (elem.childNodes or elem.getElementsByTagName) here
-	elem.innerHTML = savedcontent;
-
-	// Do whatever with gathered data;
-	$('#placeHolder').before(pasteddata);
-	focusOnPlaceholder();
-	$('#placeHolder').remove();
-}
-// END Get clipboard data at paste event
 
 function focusOnPlaceholder() {
 	var placeholder = document.getElementById('placeHolder');
@@ -121,18 +31,36 @@ function truncate_filename(n, len) {
 }
 
 function insertNodeAtCursor(node) {
-	var range, html;
-	if (window.getSelection && window.getSelection().getRangeAt) {
-		if ((window.getSelection().type == 'Caret')||(UI.isFirefox)) {
-			range = window.getSelection().getRangeAt(0);
-			range.insertNode(node);
-			setCursorAfterNode(range, node);
-		} 
-	} else if (document.selection && document.selection.createRange) {
-		range = document.selection.createRange();
-		html = (node.nodeType == 3) ? node.data : node.outerHTML;
-		range.pasteHTML(html);
-	}
+    try {
+        var range, html;
+        if (window.getSelection && window.getSelection().getRangeAt) {
+            if ((window.getSelection().type == 'Caret') || (UI.isFirefox)) {
+                range = window.getSelection().getRangeAt(0);
+                range.insertNode(node);
+                setCursorAfterNode(range, node);
+            }
+        } else if (document.selection && document.selection.createRange) {
+            range = document.selection.createRange();
+            html = (node.nodeType == 3) ? node.data : node.outerHTML;
+            range.pasteHTML(html);
+        }
+    } catch (e) {
+        console.error("Fail to insert node at cursor", e);
+    }
+}
+
+function insertTextAtCursor(text) {
+    var sel, range, html;
+    if (window.getSelection) {
+        sel = window.getSelection();
+        if (sel.getRangeAt && sel.rangeCount) {
+            range = sel.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode( document.createTextNode(text) );
+        }
+    } else if (document.selection && document.selection.createRange) {
+        document.selection.createRange().text = text;
+    }
 }
 
 function setCursorAfterNode(range, node) {
@@ -233,23 +161,26 @@ function setCursorPosition(el, pos) {
 }
 
 function removeSelectedText() {
-	if (window.getSelection || document.getSelection) {
-		var oSelection = (window.getSelection ? window : document).getSelection();
-		if (oSelection.type == 'Caret') {
-			if (oSelection.extentOffset != oSelection.baseOffset)
-				oSelection.deleteFromDocument();
-		} else if (oSelection.type == 'Range') {
-			var ss = $(oSelection.baseNode).parent()[0];
-			if ($(ss).hasClass('selected')) {
-				$(ss).remove();
-			} else {
-				oSelection.deleteFromDocument();
-				oSelection.collapseToStart();
-			}
-		}
-	} else {
-		document.selection.clear();
-	}
+    if (window.getSelection || document.getSelection) {
+        var oSelection = (window.getSelection ? window : document).getSelection();
+        if (oSelection.type == 'Caret' && (oSelection.extentOffset != oSelection.baseOffset)) {
+            oSelection.deleteFromDocument();
+        } else if (oSelection.type == 'Range') {
+            var ss = $(oSelection.baseNode).parent()[0];
+            var ssParentTag = $(oSelection.baseNode).closest('.locked.selfClosingTag')[0];
+            if ($(ss).hasClass('selected')) {
+                $(ss).remove();
+            } else if (ssParentTag) {
+                $(ssParentTag).remove();
+            } else {
+                oSelection.deleteFromDocument();
+                oSelection.collapseToStart();
+            }
+
+        }
+    } else {
+        document.selection.clear();
+    }
 }
 function stripHTML(dirtyString) {
     var container = document.createElement('div');
@@ -385,15 +316,8 @@ function runDownload() {
     }
 
     //the translation mismatches are not a severe Error, but only a warn, so don't display Error Popup
-    if ( $("#notifbox").hasClass("warningbox") && UI.globalWarnings.tag_issues.length ) {
-        APP.confirm({
-            name: 'confirmDownload', // <-- this is the name of the funciton that gets invoked?
-            cancelTxt: 'Fix errors',
-            onCancel: 'goToFirstError',
-            callback: continueDownloadFunction,
-            okTxt: 'Download anyway',
-            msg: 'Unresolved tag issues may prevent downloading your translation. <br>Please fix the issues. <a style="color: #4183C4; font-weight: 700; text-decoration: underline;" href="https://www.matecat.com/support/advanced-features/understanding-fixing-tag-errors-tag-issues-matecat/" target="_blank">How to fix tags in MateCat </a> <br /><br /> If you continue downloading, part of the content may be untranslated - look for the string UNTRANSLATED_CONTENT in the downloaded files.'
-        });
+    if ( $("#notifbox").hasClass("warningbox") && UI.globalWarnings.ERROR && UI.globalWarnings.ERROR.total > 0 ) {
+        UI.showFixWarningsOnDownload(continueDownloadFunction);
     } else {
         UI[ continueDownloadFunction ]();
     }
@@ -485,7 +409,7 @@ function insertHtmlAfterSelection(html) {
 // register a different activation function.
 // The function is defined in review_improved module.
 SegmentActivator.registry.push(function( sid ) {
-    var el = $("#segment-" + sid + "-target").find(".editarea");
+    var el = $("section:not(.opened) #segment-" + sid + "-target").find(".editarea");
     $(el).click();
 });
 
@@ -586,6 +510,7 @@ function setBrowserHistoryBehavior() {
 
         function updateAppByPopState() {
             var segment = UI.getSegmentById( UI.parsedHash.segmentId );
+            if ( UI.currentSegmentId === UI.parsedHash.segmentId ) return;
             if ( segment.length ) {
                 UI.gotoSegment( UI.parsedHash.segmentId );
             } else {
@@ -640,37 +565,201 @@ function goodbye(e) {
 }
 
 function cleanupHTMLCharsForDiff( string ) {
-	return string.replace(/&nbsp;/g, '');
+	return replacePlaceholder(string.replace(/&nbsp;/g, ''));
+}
+
+function replacePlaceholder(string) {
+   return  string
+       .replace( config.lfPlaceholderRegex, "softReturnMonad")
+        .replace( config.crPlaceholderRegex, "crPlaceholder" )
+        .replace( config.crlfPlaceholderRegex, "brMarker" )
+        .replace( config.tabPlaceholderRegex, "tabMarkerMonad" )
+        .replace( config.nbspPlaceholderRegex, "nbspPlMark" )
+}
+
+function restorePlaceholders(string) {
+    return string
+        .replace(/softReturnMonad/g , config.lfPlaceholder)
+        .replace(/crPlaceholder/g,  config.crPlaceholder)
+        .replace(/brMarker/g,  config.crlfPlaceholder )
+        .replace(/tabMarkerMonad/g, config.tabPlaceholder)
+        .replace(/nbspPlMark/g, config.nbspPlaceholder)
 }
 
 function trackChangesHTML(source, target) {
-    var diff   = UI.dmp.diff_main(
+    /*
+    There are problems when you delete or add a tag next to another, the algorithm that makes the diff fails to recognize the tags,
+    they come out of the function broken.
+    Before passing them to the function that makes the diff we replace all the tags with placeholders and we keep a map of the tags
+    indexed with the id of the tags.
+     */
+    var phTagsObject = {};
+    var diff;
+    source = source.replace( /&lt;(g|x|bx|ex|bpt|ept|ph|it|mrk).*?id="(.*?)".*?\/&gt;/gi, function (match, group1, group2) {
+        if ( _.isUndefined(phTagsObject[group2]) ) {
+            phTagsObject[group2] = match;
+        }
+        return '<' + Base64.encode(group2) +'> ';
+    });
+
+    target = target.replace( /&lt;(g|x|bx|ex|bpt|ept|ph|it|mrk).*?id="(.*?)".*?\/&gt;/gi, function (match, gruop1, group2) {
+        if ( _.isUndefined(phTagsObject[group2]) ) {
+            phTagsObject[group2] = match;
+        }
+        return '<'+ Base64.encode(group2) +'> ';
+    });
+
+    diff   = UI.dmp.diff_main(
 		cleanupHTMLCharsForDiff( source ),
 		cleanupHTMLCharsForDiff( target )
 	);
 
     UI.dmp.diff_cleanupSemantic( diff ) ;
 
+    /*
+    Before adding spans to identify added or subtracted portions we need to check and fix broken tags
+     */
+    diff = setUnclosedTagsInDiff(diff);
+    var diffTxt = '';
+
+    $.each(diff, function (index, text) {
+        text[1] = text[1].replace( /<(.*?)>/gi, function (match, text) {
+            try {
+                var decodedText = Base64.decode( text );
+                if ( !_.isUndefined( phTagsObject[ decodedText ] ) ) {
+                    return phTagsObject[ decodedText ];
+                }
+                return match;
+            } catch ( e ) {
+                return match;
+            }
+
+        });
+        var rootElem;
+        var newElem;
+        if(this[0] === -1) {
+            rootElem = $( document.createElement( 'div' ) );
+            newElem = $.parseHTML( '<span class="deleted"/>' );
+            $( newElem ).text( htmlDecode(text[1]) );
+            rootElem.append( newElem );
+            diffTxt += $( rootElem ).html();
+        } else if(text[0] === 1) {
+            rootElem = $( document.createElement( 'div' ) );
+            newElem = $.parseHTML( '<span class="added"/>' );
+            $( newElem ).text( htmlDecode(text[1]) );
+            rootElem.append( newElem );
+            diffTxt += $( rootElem ).html();
+        } else {
+            diffTxt += text[1];
+        }
+    });
+
+    return restorePlaceholders(diffTxt) ;
+}
+/**
+ *This function takes in the array that exits the UI.dmp.diff_main function and parses the array elements to see if they contain broken tags.
+ * The array is of the type:
+ *
+ * [0, "text"],
+ * [-1, "deletedText"]
+ * [1, "addedText"]
+ *
+ * For each element of the array in the first position there is 0, 1, -1 which indicate if the text is equal, added, removed
+ */
+function setUnclosedTagsInDiff(array) {
+
+    /*
+    Function to understand if an element contains broken tags
+     */
+    var thereAreIncompletedTagsInDiff = function ( text ) {
+        return (text.indexOf('<') > -1 || text.indexOf('>') > -1) &&
+            ( (text.split("<").length - 1) !== (text.split(">").length - 1) ||  text.indexOf('<') >= text.indexOf('>'))
+    };
+    /*
+    Function to understand if an element contains broken tags where the opening part is missing
+     */
+    var thereAreCloseTags = function ( text ) {
+        return thereAreIncompletedTagsInDiff(text) && ( ( (item[1].split("<").length - 1) < (item[1].split(">").length - 1) ) ||
+            ( item[1].indexOf('>') > -1 && item[1].indexOf('>') < item[1].indexOf('<')))
+    };
+    /*
+    Function to understand if an element contains broken tags where the closing part is missing
+     */
+    var thereAreOpenTags = function ( text ) {
+        return thereAreIncompletedTagsInDiff(text) && ( ( (item[1].split("<").length - 1) < (item[1].split(">").length - 1) ) ||
+            ( item[1].indexOf('<') > -1 && item[1].indexOf('>') > item[1].indexOf('<')))
+    };
+    var i;
+    var indexTemp;
+    var adding = false;
+    var tagToMoveOpen = "";
+    var tagToMoveClose = "";
+    for (i = 0; i < array.length; i++) {
+        var item = array[i];
+        var thereAreUnclosedTags =  thereAreIncompletedTagsInDiff(item[1]);
+        if ( !adding && item[0] === 0) {
+            if (thereAreUnclosedTags) {
+                tagToMoveOpen = item[1].substr(item[1].lastIndexOf('<'), item[1].length + 1);
+                array[i][1] = item[1].substr(0, item[1].lastIndexOf('<'));
+                indexTemp = i;
+                adding = true;
+            }
+        } else if (adding && item[0] === 0){
+            if ( thereAreUnclosedTags && thereAreCloseTags(item[1]) ) {
+                tagToMoveClose = item[1].substr( 0, item[1].indexOf( '>' ) + 1 );
+                tagToMoveOpen = "";
+                array[i][1] = item[1].substr( item[1].indexOf( '>' ) + 1, item[1].length + 1 );
+                i = indexTemp;
+            } else{
+                if ( thereAreUnclosedTags && thereAreOpenTags(item[1]) ) {
+                    i = i-1; //There are more unclosed tags, restart from here
+                }
+                indexTemp = 0;
+                adding = false;
+                tagToMoveOpen = "";
+                tagToMoveClose = "";
+
+            }
+        } else if (adding) {
+            array[i][1] = tagToMoveOpen + item[1] + tagToMoveClose;
+        }
+    }
+    return array;
+}
+
+
+
+function getDiffPatch(source, target) {
+    var diff   = UI.dmp.diff_main(
+        cleanupHTMLCharsForDiff( source ),
+        cleanupHTMLCharsForDiff( target )
+    );
+
+    UI.dmp.diff_cleanupSemantic( diff ) ;
+    return diff;
+}
+
+function trackChangesHTMLFromDiffArray(diff) {
     var diffTxt = '';
 
     $.each(diff, function (index) {
         if(this[0] == -1) {
             var rootElem = $( document.createElement( 'div' ) );
             var newElem = $.parseHTML( '<span class="deleted"/>' );
-            $( newElem ).text( this[1] );
+            $( newElem ).text( htmlDecode(this[1]) );
             rootElem.append( newElem );
             diffTxt += $( rootElem ).html();
         } else if(this[0] == 1) {
             var rootElem = $( document.createElement( 'div' ) );
             var newElem = $.parseHTML( '<span class="added"/>' );
-            $( newElem ).text( this[1] );
+            $( newElem ).text( htmlDecode(this[1]) );
             rootElem.append( newElem );
             diffTxt += $( rootElem ).html();
         } else {
             diffTxt += this[1];
         }
     });
-    return diffTxt ;
+    return restorePlaceholders(diffTxt);
 }
 
 
@@ -883,9 +972,9 @@ function isTranslated(section) {
     );
 }
 
-function template( name, data ) {
-    return $( MateCat.Templates[ name ]( data ) );
-}
+// function template( name, data ) {
+//     return $( MateCat.Templates[ name ]( data ) );
+// }
 
 function eventFromReact(e) {
     return e.target.hasAttribute('data-reactid');
@@ -927,4 +1016,44 @@ function genericErrorAlertMessage() {
 			'If the problem persists please contact %s reporting the web address of the current browser tab.',
 			linkedSupportEmail() )
 	});
+}
+
+function getSelectionData(selection, container) {
+    var data = {};
+    data.start_node = $.inArray( selection.anchorNode, container.contents() );
+    if (data.start_node<0) {
+        //this means that the selection is probably ending inside a lexiqa tag,
+        //or matecat tag/marking
+        data.start_node = $.inArray( $(selection.anchorNode).parent()[0], container.contents() );
+    }
+    var nodes = container.contents();//array of nodes
+    if (data.start_node ===0) {
+        data.start_offset = selection.anchorOffset;
+    } else {
+        data.start_offset = 0;
+        for (var i=0;i<data.start_node;i++) {
+            data.start_offset += nodes[i].textContent.length;
+        }
+        data.start_offset += selection.anchorOffset;
+        data.start_node = 0;
+    }
+
+    data.end_node = $.inArray( selection.focusNode, container.contents() );
+    if (data.end_node<0) {
+        //this means that the selection is probably ending inside a lexiqa tag,
+        //or matecat tag/marking
+        data.end_node = $.inArray( $(selection.focusNode).parent()[0], container.contents() );
+    }
+    if (data.end_node ===0)
+        data.end_offset =  selection.focusOffset;
+    else {
+        data.end_offset = 0;
+        for (var i=0;i<data.end_node;i++) {
+            data.end_offset += nodes[i].textContent.length;
+        }
+        data.end_offset += selection.focusOffset;
+        data.end_node = 0;
+    }
+    data.selected_string = selection.toString() ;
+    return data ;
 }

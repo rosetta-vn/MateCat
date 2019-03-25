@@ -27,7 +27,7 @@ UI = {
         var headerMountPoint = $("header")[0];
         this.Search.currentPage = 1;
         this.pageLeft = false;
-        ReactDOM.render(React.createElement(Header), headerMountPoint);
+
 
 
 
@@ -62,6 +62,12 @@ UI = {
         });
 
         API.TEAM.getAllTeams().done(function (data) {
+
+            ReactDOM.render(React.createElement(Header ,{
+                user: APP.USER.STORE,
+                showFilterProjects: true
+            }), headerMountPoint);
+
             self.teams = data.teams;
             TeamsActions.renderTeams(self.teams);
             self.selectedTeam = APP.getLastTeamSelected(self.teams);
@@ -164,7 +170,7 @@ UI = {
         var url = '/translate/'+ prName +'/'+ job.source +'-'+ job.target +'/'+ job.id +'-'+ job.password + '&openTab=options' ;
         window.open(url, '_blank');
         setTimeout(function () {
-            $.cookie('tmpanel-open', 0, { path: '/' });
+            Cookies.set('tmpanel-open', 0, { path: '/' });
         }, 2000);
     },
     /**
@@ -174,7 +180,7 @@ UI = {
         var url = '/translate/'+ prName +'/'+ job.source +'-'+ job.target +'/'+ job.id +'-'+ job.password + '&openTab=tm' ;
         window.open(url, '_blank');
         setTimeout(function () {
-            $.cookie('tmpanel-open', 0, { path: '/' });
+            Cookies.set('tmpanel-open', 0, { path: '/' });
         }, 2000);
     },
 
@@ -258,7 +264,7 @@ UI = {
             title: 'Ooops...',
             text: 'Something went wrong, the project has been assigned to another member or moved to another team.',
             type: 'warning',
-            position: 'tc',
+            position: 'bl',
             allowHtml: true,
             autoDismiss: false,
         };
@@ -301,11 +307,11 @@ UI = {
         //the translation mismatches are not a severe Error, but only a warn, so don't display Error Popup
         if ( job.warnings_count > 0 ) {
             var props = {
-                text: 'Unresolved tag issues may prevent downloading your translation. <br>Please fix the issues. ' +
+                text: 'Unresolved issues may prevent downloading your translation. <br>Please fix the issues. ' +
                 '<a style="color: #4183C4; font-weight: 700; text-decoration: underline;" href="https://www.matecat.com/support/advanced-features/understanding-fixing-tag-errors-tag-issues-matecat/" target="_blank">How to fix tags in MateCat </a> <br /><br />'+
                 'If you continue downloading, part of the content may be untranslated - ' +
                 'look for the string UNTRANSLATED_CONTENT in the downloaded files.',
-                successText: "Donload anyway",
+                successText: "Download anyway",
                 successCallback: continueDownloadFunction,
                 warningText: "Fix errors",
                 warningCallback: openUrl

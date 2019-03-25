@@ -1,6 +1,6 @@
 // var React = require('react');
-let Project = require('./ProjectContainer').default;
-let FilterProjects = require("../FilterProjects").default;
+let ProjectContainer = require('./ProjectContainer').default;
+let FilterProjects = require("../header/manage/FilterProjectsStatus").default;
 
 
 class ProjectsContainer extends React.Component {
@@ -186,7 +186,7 @@ class ProjectsContainer extends React.Component {
         let projects = this.state.projects;
 
         let items = projects.map((project, i) => (
-            <Project
+            <ProjectContainer
                 key={project.get('id')}
                 project={project}
                 lastActivityFn={this.props.getLastActivity}

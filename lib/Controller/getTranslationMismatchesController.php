@@ -1,4 +1,7 @@
 <?php
+
+use API\V2\Json\SegmentTranslationMismatches;
+
 /**
  * Created by PhpStorm.
  * @author domenico domenico@translated.net / ostico@gmail.com
@@ -33,6 +36,8 @@ class getTranslationMismatchesController extends ajaxController {
         $this->id_job     = (int)$__postInput[ 'id_job' ];
         $this->password   = $__postInput[ 'password' ];
 
+        $this->featureSet->loadForProject( Projects_ProjectDao::findByJobId( $this->id_job, 60 * 60 ) );
+
     }
 
     /**
@@ -52,33 +57,8 @@ class getTranslationMismatchesController extends ajaxController {
             $Translation_mismatches = getTranslationsMismatches( $this->id_job, $this->password, $this->id_segment );
         }
 
-        $result = array(
-                'editable'       => array(),
-                'not_editable'   => array(),
-                'prop_available' => $thereArePossiblePropagations
-        );
-
-        foreach ( $Translation_mismatches as $position => $row ) {
-
-            if ( $row[ 'editable' ] ) {
-                $result[ 'editable' ][ ] = array(
-                        'translation' => CatUtils::rawxliff2view( $row[ 'translation' ] ),
-                        'TOT'         => $row[ 'TOT' ],
-                        'involved_id' => explode( ",", $row[ 'involved_id' ] )
-                );
-            }
-            else {
-                $result[ 'not_editable' ][ ] = array(
-                        'translation' => CatUtils::rawxliff2view( $row[ 'translation' ] ),
-                        'TOT'         => $row[ 'TOT' ],
-                        'involved_id' => explode( ",", $row[ 'involved_id' ] )
-                );
-            }
-
-        }
-
         $this->result[ 'code' ] = 1;
-        $this->result[ 'data' ] = $result;
+        $this->result[ 'data' ] = ( new SegmentTranslationMismatches( $Translation_mismatches, $thereArePossiblePropagations, $this->featureSet ) )->render();
 
     }
 

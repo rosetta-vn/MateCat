@@ -26,6 +26,21 @@ class Users_UserStruct extends DataAccess_AbstractDaoSilentStruct   implements D
     public $confirmation_token ;
     public $confirmation_token_created_at ;
 
+    /**
+     * Sometimes we send around empty UserStruct to signify Anonymous user.
+     * This a convenience method to encapsulate the logic that defines an anonymous user.
+     * We check for uid not to be empty. Additional check on email to be sure we don't consider the user anonymous
+     * when it's submitting registration info.
+     *
+     * This logic may change in the future if we decide to keep anonymous users inside database
+     * (i.e. !is_null($this->uid)).
+     *
+     * @return bool
+     */
+    public function isAnonymous() {
+        return is_null( $this->uid ) && is_null( $this->email );
+    }
+
     public function clearAuthToken() {
         $this->confirmation_token = null ;
         $this->confirmation_token_created_at = null ;
@@ -91,6 +106,7 @@ class Users_UserStruct extends DataAccess_AbstractDaoSilentStruct   implements D
      */
     public function getUserTeams(){
         $mDao = new MembershipDao();
+        $mDao->setCacheTTL( 60 * 60 * 24 );
         return $mDao->findUserTeams( $this );
     }
 
@@ -119,8 +135,7 @@ class Users_UserStruct extends DataAccess_AbstractDaoSilentStruct   implements D
     /**
      * Returns the decoded access token.
      *
-     * @param null $field
-     *
+     * @return bool|string
      */
     public function getDecryptedOauthAccessToken() {
         $oauthTokenEncryption = OauthTokenEncryption::getInstance();

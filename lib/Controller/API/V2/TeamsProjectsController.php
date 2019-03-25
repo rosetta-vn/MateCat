@@ -9,6 +9,7 @@
 namespace API\V2;
 
 
+use API\V2\Exceptions\NotFoundException;
 use API\V2\Json\Project;
 use API\V2\Validators\LoginValidator;
 use API\V2\Validators\ProjectExistsInTeamValidator;
@@ -16,15 +17,15 @@ use API\V2\Validators\TeamAccessValidator;
 use API\V2\Validators\TeamProjectValidator;
 use FeatureSet;
 use Projects\ProjectModel;
+use ManageUtils;
+use Teams\TeamStruct;
 
 class TeamsProjectsController extends KleinController {
 
     protected $project;
 
-    /**
-     * @var FeatureSet
-     */
-    protected $featureSet;
+    /** @var TeamStruct */
+    protected $team;
 
     public function update() {
 
@@ -69,10 +70,35 @@ class TeamsProjectsController extends KleinController {
         $this->response->json( array( 'project' => $formatted->renderItem( $this->project ) ) );
     }
 
+    public function getByName() {
+        $start                 = 0;
+        $step                  = 25;
+        $search_in_pname       = $this->request->project_name;
+        $search_source         = null;
+        $search_target         = null;
+        $search_status         = "active";
+        $search_only_completed = null;
+        $project_id            = null;
+        $assignee              = null;
+        $no_assignee           = null;
+
+        $projects = ManageUtils::queryProjects( $this->user, $start, $step,
+                $search_in_pname,
+                $search_source, $search_target, $search_status,
+                $search_only_completed, $project_id,
+                $this->team, $assignee,
+                $no_assignee );
+
+        if( empty( $projects ) ){
+            throw new NotFoundException( "Project not found", 404 );
+        }
+
+        $this->response->json( [ 'projects' => $projects ] );
+    }
+
     public function getAll(){
 
-        $this->featureSet = new FeatureSet();
-        $this->featureSet->loadFromUserEmail( $this->getUser()->email ) ;
+        $this->featureSet->loadFromUserEmail( $this->user->email ) ;
 
         $projectsList = \Projects_ProjectDao::findByTeamId( $this->params[ 'id_team' ], 60 );
 
@@ -95,6 +121,10 @@ class TeamsProjectsController extends KleinController {
             $projects[ $key ] = $features->filter('filter_manage_single_project', $project );
         }
         return $projects ;
+    }
+
+    public function setTeam($team){
+        $this->team = $team;
     }
 
 }

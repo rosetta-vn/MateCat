@@ -2,12 +2,13 @@
 
 namespace Features\ProjectCompletion\Decorator ;
 use AbstractDecorator ;
+use catController;
 use Features ;
 use Chunks_ChunkCompletionEventDao  ;
 
 class CatDecorator extends AbstractDecorator {
 
-    /** @var  \catController  */
+    /** @var  catController  */
     protected $controller;
 
     private $stats;
@@ -15,7 +16,7 @@ class CatDecorator extends AbstractDecorator {
     private $current_phase  ;
     
     public function decorate() {
-        $job = $this->controller->getJob();
+        $job = $this->controller->getChunk();
 
         $this->stats = $this->controller->getJobStats();
         $completed = $job->isMarkedComplete( array('is_review' => $this->controller->isRevision() ) ) ;
@@ -25,22 +26,34 @@ class CatDecorator extends AbstractDecorator {
         );
 
         $dao = new \Chunks_ChunkCompletionEventDao();
-        $this->current_phase = $dao->currentPhase( $this->controller->getJob() );
+        $this->current_phase = $dao->currentPhase( $this->controller->getChunk() );
 
-        $this->template->project_completion_feature_enabled = true ;
-        $this->template->header_main_button_id  = 'markAsCompleteButton' ;
-        $this->template->job_completion_current_phase = $this->current_phase ;
+        $displayButton = true ;
+        $displayButton = $job->getProject()->getFeatures()->filter('filterProjectCompletionDisplayButton', $displayButton, $this);
 
-        if ( $lastCompletionEvent ) {
-            $this->template->job_completion_last_event_id = $lastCompletionEvent['id_event'] ;
-        }
+        if ( $displayButton ) {
+            $this->template->project_completion_feature_enabled = true ;
+            $this->template->header_main_button_id  = 'markAsCompleteButton' ;
+            $this->template->job_completion_current_phase = $this->current_phase ;
 
-        if ( $completed ) {
-            $this->varsForComplete();
+            if ( $lastCompletionEvent ) {
+                $this->template->job_completion_last_event_id = $lastCompletionEvent['id_event'] ;
+            }
+
+            if ( $completed ) {
+                $this->varsForComplete();
+            }
+            else {
+                $this->varsForUncomplete();
+            }
         }
-        else {
-            $this->varsForUncomplete();
-        }
+    }
+
+    /**
+     * @return catController
+     */
+    public function getController() {
+        return $this->controller ;
     }
 
     private function varsForUncomplete() {
@@ -64,15 +77,24 @@ class CatDecorator extends AbstractDecorator {
     }
 
     private function completable() {
+
         if ($this->controller->isRevision()) {
-            return $this->current_phase == Chunks_ChunkCompletionEventDao::REVISE &&
+            $completable = $this->current_phase == Chunks_ChunkCompletionEventDao::REVISE &&
                     $this->stats['DRAFT'] == 0 &&
                     ( $this->stats['APPROVED'] + $this->stats['REJECTED'] ) > 0;
         }
         else {
-            return $this->current_phase == Chunks_ChunkCompletionEventDao::TRANSLATE &&
+            $completable = $this->current_phase == Chunks_ChunkCompletionEventDao::TRANSLATE &&
                     $this->stats['DRAFT'] == 0 && $this->stats['REJECTED'] == 0 ;
         }
+
+        $completable = $this->controller->getChunk()->getProject()->getFeatures()->filter('filterJobCompletable', $completable,
+                $this->controller->getChunk(),
+                $this->controller->getUser(),
+                catController::isRevision()
+        );
+
+        return $completable ;
     }
 
 }

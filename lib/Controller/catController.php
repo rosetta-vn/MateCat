@@ -1,7 +1,8 @@
 <?php
 use ActivityLog\Activity;
 use ActivityLog\ActivityLogStruct;
-use Exceptions\NotFoundError;
+use Exceptions\NotFoundException;
+use TmKeyManagement\UserKeysModel;
 
 
 /**
@@ -34,20 +35,18 @@ class catController extends viewController {
 
     private $qa_overall = '';
 
-    private $_keyList = array( 'totals' => array(), 'job_keys' => array() );
-
     public $target_code;
     public $source_code;
 
     /**
      * @var Chunks_ChunkStruct
      */
-    private $job ;
+    private $chunk ;
 
     /**
      * @var Projects_ProjectStruct
      */
-    private $project ;
+    public $project ;
 
     private $translation_engines;
 
@@ -64,21 +63,18 @@ class catController extends viewController {
     private $review_password = "";
 
     /**
-     * @var FeatureSet
-     */
-    private $projectFeatures ;
-
-    /**
      * @var WordCount_Struct
      */
     private $wStruct ;
 
+    protected $templateName = "index.html";
+
     public function __construct() {
         $this->start_time = microtime( 1 ) * 1000;
 
-        parent::__construct( false );
+        parent::__construct();
 
-        parent::makeTemplate( "index.html" );
+        parent::makeTemplate( $this->templateName );
 
         $filterArgs = array(
                 'jid'      => array( 'filter' => FILTER_SANITIZE_NUMBER_INT ),
@@ -99,12 +95,11 @@ class catController extends viewController {
         /*
          * avoid Exception
          *
-         * Argument 1 passed to FeatureSet::loadForProject() must be an instance of Projects_ProjectStruct, boolean given,
+         * Argument 1 passed to loadForProject() must be an instance of Projects_ProjectStruct, boolean given,
          */
         ( !$this->project ? $this->project = new Projects_ProjectStruct() : null ); // <-----
 
-        $this->projectFeatures = new FeatureSet();
-        $this->projectFeatures->loadForProject( $this->project ) ;
+        $this->featureSet->loadForProject( $this->project ) ;
 
     }
 
@@ -123,7 +118,7 @@ class catController extends viewController {
      */
     private function findJobByIdAndPassword() {
         if ( self::isRevision() ) {
-            $this->password = $this->projectFeatures->filter(
+            $this->password = $this->featureSet->filter(
                 'filter_review_password_to_job_password',
                 $this->password,
                 $this->jid
@@ -131,18 +126,19 @@ class catController extends viewController {
 
         }
 
-        $this->job = Chunks_ChunkDao::getByIdAndPassword( $this->jid, $this->password );
+        $this->chunk = Chunks_ChunkDao::getByIdAndPassword( $this->jid, $this->password );
     }
 
     public function doAction() {
-        $this->projectFeatures->run('catControllerDoActionStart', $this);
-        $this->checkLoginRequiredAndRedirect() ;
+
+        $this->featureSet->run('beginDoAction', $this);
 
         try {
             // TODO: why is this check here and not in constructor? At least it should be moved in a specific
             // function and not-found handled via exception.
             $this->findJobByIdAndPassword();
-        } catch( NotFoundError $e ){
+            $this->featureSet->run('handleProjectType', $this);
+        } catch( NotFoundException $e ){
             $this->job_not_found = true;
             return;
         }
@@ -150,7 +146,7 @@ class catController extends viewController {
         $data = getSegmentsInfo( $this->jid, $this->password );
 
         //retrieve job owner. It will be useful also if the job is archived or cancelled
-        $this->job_owner = ( $data[ 0 ][ 'job_owner' ] != "" ) ? $data[ 0 ][ 'job_owner' ] : "support@matecat.com";
+        $this->job_owner = ( $data[ 0 ][ 'job_owner' ] != "" ) ? $data[ 0 ][ 'job_owner' ] : INIT::$MAILER_RETURN_PATH;
 
         if ( $data[ 0 ][ 'status' ] == Constants_JobStatus::STATUS_CANCELLED ) {
             $this->job_cancelled = true;
@@ -201,6 +197,7 @@ class catController extends viewController {
             $this->job_archived = true;
             $this->job_owner    = $data[ 0 ][ 'job_owner' ];
         }
+
         $this->wStruct = CatUtils::getWStructFromJobArray( $data[0] );
         $this->job_stats = CatUtils::getFastStatsForJob( $this->wStruct );
 
@@ -219,122 +216,14 @@ class catController extends viewController {
 
         if ( self::isRevision() ) {
             $this->userRole = TmKeyManagement_Filter::ROLE_REVISOR;
-        } elseif ( $this->logged_user->email == $data[ 0 ][ 'job_owner' ] ) {
+        } elseif ( $this->user->email == $data[ 0 ][ 'job_owner' ] ) {
             $this->userRole = TmKeyManagement_Filter::OWNER;
         } else {
             $this->userRole = TmKeyManagement_Filter::ROLE_TRANSLATOR;
         }
 
-        /*
-         * Take the keys of the user
-         */
-        try {
-            $_keyDao = new TmKeyManagement_MemoryKeyDao( Database::obtain() );
-            $dh      = new TmKeyManagement_MemoryKeyStruct( array( 'uid' => $this->logged_user->uid ) );
-            $keyList = $_keyDao->read( $dh );
-
-        } catch ( Exception $e ) {
-            $keyList = array();
-            Log::doLog( $e->getMessage() );
-        }
-
-        $reverse_lookup_user_personal_keys = array( 'pos' => array(), 'elements' => array() );
-        /**
-         * Set these keys as editable for the client
-         *
-         * @var $keyList TmKeyManagement_MemoryKeyStruct[]
-         */
-        foreach ( $keyList as $_j => $key ) {
-
-            /**
-             * @var $_client_tm_key TmKeyManagement_TmKeyStruct
-             */
-
-            //create a reverse lookup
-            $reverse_lookup_user_personal_keys[ 'pos' ][ $_j ]      = $key->tm_key->key;
-            $reverse_lookup_user_personal_keys[ 'elements' ][ $_j ] = $key;
-
-            $this->_keyList[ 'totals' ][ $_j ] = new TmKeyManagement_ClientTmKeyStruct( $key->tm_key );
-
-        }
-
-        /*
-         * Now take the JOB keys
-         */
-        $job_keyList = json_decode( $data[ 0 ][ 'tm_keys' ], true );
-
-        /**
-         * Start this N^2 cycle from keys of the job,
-         * these should be statistically lesser than the keys of the user
-         *
-         * @var $keyList array
-         */
-        foreach ( $job_keyList as $jobKey ) {
-
-            $jobKey = new TmKeyManagement_ClientTmKeyStruct( $jobKey );
-
-            if ( $this->isLoggedIn() && count( $reverse_lookup_user_personal_keys[ 'pos' ] ) ) {
-
-                /*
-                 * If user has some personal keys, check for the job keys if they are present, and obfuscate
-                 * when they are not
-                 */
-                $_index_position = array_search( $jobKey->key, $reverse_lookup_user_personal_keys[ 'pos' ] );
-                if ( $_index_position !== false ) {
-
-                    //I FOUND A KEY IN THE JOB THAT IS PRESENT IN MY KEYRING
-                    //i'm owner?? and the key is an owner type key?
-                    if ( !$jobKey->owner && $this->userRole != TmKeyManagement_Filter::OWNER ) {
-                        $jobKey->r = $jobKey->{TmKeyManagement_Filter::$GRANTS_MAP[ $this->userRole ][ 'r' ]};
-                        $jobKey->w = $jobKey->{TmKeyManagement_Filter::$GRANTS_MAP[ $this->userRole ][ 'w' ]};
-                        $jobKey    = $jobKey->hideKey( $this->logged_user->uid );
-                    } else {
-                        if ( $jobKey->owner && $this->userRole != TmKeyManagement_Filter::OWNER ) {
-                            // I'm not the job owner, but i know the key because it is in my keyring
-                            // so, i can upload and download TMX, but i don't want it to be removed from job
-                            // in tm.html relaxed the control to "key.edit" to enable buttons
-                            // $jobKey = $jobKey->hideKey( $uid ); // enable editing
-
-                        } else {
-                            if ( $jobKey->owner && $this->userRole == TmKeyManagement_Filter::OWNER ) {
-                                //do Nothing
-                            }
-                        }
-                    }
-
-                    //copy the is_shared value from the key inside the Keyring into the key coming from job
-                    $jobKey->setShared( $reverse_lookup_user_personal_keys[ 'elements' ][ $_index_position ]->tm_key->isShared() );
-
-                    unset( $this->_keyList[ 'totals' ][ $_index_position ] );
-
-                } else {
-
-                    /*
-                     * This is not a key of that user, set right and obfuscate
-                     */
-                    $jobKey->r = true;
-                    $jobKey->w = true;
-                    $jobKey    = $jobKey->hideKey( -1 );
-
-                }
-
-                $this->_keyList[ 'job_keys' ][] = $jobKey;
-
-            } else {
-                /*
-                 * This user is anonymous or it has no keys in its keyring, obfuscate all
-                 */
-                $jobKey->r                      = true;
-                $jobKey->w                      = true;
-                $this->_keyList[ 'job_keys' ][] = $jobKey->hideKey( -1 );
-
-            }
-
-        }
-
-        //clean unordered keys
-        $this->_keyList[ 'totals' ] = array_values( $this->_keyList[ 'totals' ] );
-
+        $userKeys = new UserKeysModel($this->user, $this->userRole ) ;
+        $this->template->user_keys = $userKeys->getKeys( $data[ 0 ] [ 'tm_keys' ] ) ;
 
         /**
          * Retrieve information about job errors
@@ -342,11 +231,17 @@ class catController extends viewController {
          * @see setRevisionController
          */
 
+        $reviseClass = new Constants_Revise;
+
         $jobQA = new Revise_JobQA(
                 $this->jid,
                 $this->password,
-                $this->wStruct->getTotal()
+                $this->wStruct->getTotal(),
+                $reviseClass
         );
+
+        list( $jobQA, $reviseClass ) = $this->featureSet->filter( "overrideReviseJobQA", [ $jobQA, $reviseClass ], $this->jid, $this->password, $this->wStruct->getTotal() );
+
 
         $jobQA->retrieveJobErrorTotals();
 
@@ -362,7 +257,7 @@ class catController extends viewController {
         if ( $this->isLoggedIn() ) {
             $engineQuery         = new EnginesModel_EngineStruct();
             $engineQuery->type   = 'MT';
-            $engineQuery->uid    = $this->logged_user->uid;
+            $engineQuery->uid    = $this->user->uid;
             $engineQuery->active = 1;
             $mt_engines          = $engine->read( $engineQuery );
         } else {
@@ -377,7 +272,7 @@ class catController extends viewController {
 
         //this gets MT engine active for the job
         $engineQuery         = new EnginesModel_EngineStruct();
-        $engineQuery->id     = $this->job->id_mt_engine ;
+        $engineQuery->id     = $this->chunk->id_mt_engine ;
         $engineQuery->active = 1;
         $active_mt_engine    = $engine->setCacheTTL( 60 * 10 )->read( $engineQuery );
 
@@ -406,7 +301,7 @@ class catController extends viewController {
         $activity->id_project = $this->pid;
         $activity->action     = $action;
         $activity->ip         = Utils::getRealIpAddr();
-        $activity->uid        = $this->logged_user->uid;
+        $activity->uid        = $this->user->uid;
         $activity->event_date = date( 'Y-m-d H:i:s' );
         Activity::save( $activity );
 
@@ -427,6 +322,8 @@ class catController extends viewController {
         $this->template->jid         = $this->jid;
         $this->template->password    = $this->password;
 
+        $this->template->id_team = null;
+
         if( $this->job_cancelled || $this->job_archived ) {
 
             $this->template->pid                 = null;
@@ -440,7 +337,11 @@ class catController extends viewController {
             $this->template->owner_email         = INIT::$SUPPORT_MAIL;
 
             $team = $this->project->getTeam();
+
+
+
             if( !empty( $team ) ){
+
                 $teamModel = new TeamModel( $team );
                 $teamModel->updateMembersProjectsCount();
                 $membersIdList = [];
@@ -448,8 +349,12 @@ class catController extends viewController {
                 if( $team->type == Constants_Teams::PERSONAL ){
                     $ownerMail = $team->getMembers()[0]->getUser()->getEmail();
                 } else {
-
-                    $ownerMail = ( new Users_UserDao() )->setCacheTTL( 60 * 60 * 24 )->getByUid( $this->project->id_assignee )->getEmail();
+                    $assignee = ( new Users_UserDao() )->setCacheTTL( 60 * 60 * 24 )->getByUid( $this->project->id_assignee );
+                    if ($assignee) {
+                        $ownerMail = $assignee->getEmail();
+                    } else {
+                        $ownerMail = INIT::$SUPPORT_MAIL;
+                    }
                     $membersIdList = array_map( function( $memberStruct ){
                         /**
                          * @var $memberStruct \Teams\MembershipStruct
@@ -460,7 +365,7 @@ class catController extends viewController {
                 }
                 $this->template->owner_email = $ownerMail;
 
-                if( $this->logged_user->email == $ownerMail || in_array( $this->logged_user->uid, $membersIdList ) ){
+                if( $this->user->email == $ownerMail || in_array( $this->user->uid, $membersIdList ) ){
                     $this->template->jobOwnerIsMe        = true;
                 } else {
                     $this->template->jobOwnerIsMe        = false;
@@ -471,8 +376,8 @@ class catController extends viewController {
             $this->template->job_not_found       = $this->job_not_found;
             $this->template->job_archived        = ( $this->job_archived ) ? INIT::JOB_ARCHIVABILITY_THRESHOLD : '';
             $this->template->job_cancelled       = $this->job_cancelled;
-            $this->template->logged_user         = ( $this->logged_user !== false ) ? $this->logged_user->shortName() : "";
-            $this->template->extended_user       = ( $this->logged_user !== false ) ? trim( $this->logged_user->fullName() ) : "";
+            $this->template->logged_user         = ( $this->isLoggedIn() !== false ) ? $this->user->shortName() : "";
+            $this->template->extended_user       = ( $this->isLoggedIn() !== false ) ? trim( $this->user->fullName() ) : "";
 
             return;
 
@@ -484,9 +389,13 @@ class catController extends viewController {
             $this->template->fileCounter         = $this->fileCounter;
         }
 
+        if ( !empty( $this->project->id_team ) ) {
+            $this->template->id_team = $this->project->id_team;
+        }
+
         $this->template->owner_email        = $this->job_owner;
-        $this->template->jobOwnerIsMe       = ( $this->logged_user->email == $this->job_owner );
-        $this->template->get_public_matches = ( !$this->job->only_private_tm );
+        $this->template->jobOwnerIsMe       = ( $this->user->email == $this->job_owner );
+        $this->template->get_public_matches = ( !$this->chunk->only_private_tm );
         $this->template->job_not_found      = $this->job_not_found;
         $this->template->job_archived       = ( $this->job_archived ) ? INIT::JOB_ARCHIVABILITY_THRESHOLD : '';
         $this->template->job_cancelled      = $this->job_cancelled;
@@ -497,10 +406,10 @@ class catController extends viewController {
         $this->template->pname       = $this->project->name;
 
         $this->template->mt_engines = $this->translation_engines;
-        $this->template->mt_id      = $this->job->id_mt_engine ;
+        $this->template->mt_id      = $this->chunk->id_mt_engine ;
 
-        $this->template->first_job_segment   = $this->job->job_first_segment ;
-        $this->template->last_job_segment    = $this->job->job_last_segment ;
+        $this->template->first_job_segment   = $this->chunk->job_first_segment ;
+        $this->template->last_job_segment    = $this->chunk->job_last_segment ;
 
         $this->template->owner_email         = $this->job_owner;
 
@@ -509,7 +418,6 @@ class catController extends viewController {
         $this->job_stats[ 'STATUS_BAR_NO_DISPLAY' ] = ( $this->project->status_analysis == Constants_ProjectStatus::STATUS_DONE ? '' : 'display:none;' );
         $this->job_stats[ 'ANALYSIS_COMPLETE' ]     = ( $this->project->status_analysis == Constants_ProjectStatus::STATUS_DONE ? true : false );
 
-        $this->template->user_keys             = $this->_keyList;
         $this->template->job_stats             = $this->job_stats;
         $this->template->stat_quality          = $this->qa_data;
 
@@ -518,16 +426,15 @@ class catController extends viewController {
         $end_time                    = microtime( true ) * 1000;
         $load_time                   = $end_time - $this->start_time;
         $this->template->load_time   = $load_time;
-        $this->template->tms_enabled = var_export( (bool) $this->job->id_tms , true );
-        $this->template->mt_enabled  = var_export( (bool) $this->job->id_mt_engine , true );
+
+        $this->template->tms_enabled = var_export( (bool) $this->chunk->id_tms , true );
+        $this->template->mt_enabled  = var_export( (bool) $this->chunk->id_mt_engine , true );
 
         $this->template->warningPollingInterval = 1000 * ( INIT::$WARNING_POLLING_INTERVAL );
         $this->template->segmentQACheckInterval = 1000 * ( INIT::$SEGMENT_QA_CHECK_INTERVAL );
 
         $this->template->maxFileSize    = INIT::$MAX_UPLOAD_FILE_SIZE;
         $this->template->maxTMXFileSize = INIT::$MAX_UPLOAD_TMX_FILE_SIZE;
-
-        $this->template->hideMatchesClass = ( self::isRevision() ? '' : ' hideMatches' );
 
         $this->template->tagLockCustomizable  = ( INIT::$UNLOCKABLE_TAGS == true ) ? true : false;
         //FIXME: temporarily disabled
@@ -571,10 +478,13 @@ class catController extends viewController {
 
         $this->template->uses_matecat_filters = Utils::isJobBasedOnMateCatFilters($this->jid);
 
+        //Maybe some plugin want disable the Split from the config
+        $this->template->splitSegmentEnabled = var_export(true, true);
+
         $this->decorator = new CatDecorator( $this, $this->template );
         $this->decorator->decorate();
 
-        $this->projectFeatures->appendDecorators(
+        $this->featureSet->appendDecorators(
             'CatDecorator',
             $this,
             $this->template
@@ -588,8 +498,8 @@ class catController extends viewController {
     /**
      * @return Chunks_ChunkStruct
      */
-    public function getJob() {
-      return $this->job ;
+    public function getChunk() {
+      return $this->chunk ;
     }
 
     /**
@@ -612,7 +522,7 @@ class catController extends viewController {
     private function getEditLogClass() {
         $return = "";
 
-        $editLogModel = new EditLog_EditLogModel( $this->jid, $this->password );
+        $editLogModel = new EditLog_EditLogModel( $this->jid, $this->password, $this->featureSet );
         $issue = $editLogModel->getMaxIssueLevel();
 
         $dao = new EditLog_EditLogDao(Database::obtain());
@@ -627,7 +537,7 @@ class catController extends viewController {
     }
 
     public function isCurrentProjectGDrive() {
-        return \Projects_ProjectDao::isGDriveProject($this->job->id_project);
+        return \Projects_ProjectDao::isGDriveProject($this->chunk->id_project);
     }
 
 }

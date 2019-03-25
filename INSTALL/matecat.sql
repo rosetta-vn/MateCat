@@ -1,4 +1,4 @@
--- MySQL dump 10.13  Distrib 5.7.20, for Linux (x86_64)
+-- MySQL dump 10.13  Distrib 5.7.25, for Linux (x86_64)
 --
 -- Host: 127.0.0.1    Database: matecat
 -- ------------------------------------------------------
@@ -173,6 +173,26 @@ CREATE TABLE `connected_services` (
   `is_default` tinyint(4) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uid_email_service` (`uid`,`email`,`service`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `context_groups`
+--
+
+DROP TABLE IF EXISTS `context_groups`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `context_groups` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id_project` int(11) NOT NULL,
+  `id_segment` bigint(20) unsigned DEFAULT NULL,
+  `id_file` int(10) unsigned DEFAULT NULL,
+  `context_json` varchar(16320) NOT NULL,
+  PRIMARY KEY (`id`,`id_project`),
+  KEY `id_segment_idx` (`id_segment`) USING BTREE,
+  KEY `id_file_idx` (`id_file`) USING BTREE,
+  KEY `id_project_idx` (`id_project`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -639,6 +659,29 @@ CREATE TABLE `projects` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `qa_archived_reports`
+--
+
+DROP TABLE IF EXISTS `qa_archived_reports`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `qa_archived_reports` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `created_by` int(11) NOT NULL,
+  `id_project` int(11) NOT NULL,
+  `id_job` bigint(20) NOT NULL,
+  `password` varchar(45) NOT NULL,
+  `job_first_segment` bigint(20) unsigned NOT NULL,
+  `job_last_segment` bigint(20) unsigned NOT NULL,
+  `create_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `quality_report` text NOT NULL,
+  `version` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `id_job_password_idx` (`id_job`,`password`,`job_first_segment`,`job_last_segment`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `qa_categories`
 --
 
@@ -672,9 +715,10 @@ CREATE TABLE `qa_chunk_reviews` (
   `review_password` varchar(45) NOT NULL,
   `penalty_points` bigint(20) DEFAULT NULL,
   `num_errors` int(11) NOT NULL DEFAULT '0',
-  `is_pass` tinyint(4) NOT NULL DEFAULT '0',
+  `is_pass` tinyint(4) DEFAULT NULL,
   `force_pass_at` timestamp NULL DEFAULT NULL,
   `reviewed_words_count` int(11) NOT NULL DEFAULT '0',
+  `undo_data` text,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id_job_password` (`id_job`,`password`),
   KEY `id_project` (`id_project`),
@@ -784,7 +828,7 @@ CREATE TABLE `segment_notes` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `id_segment` bigint(20) NOT NULL,
   `internal_id` varchar(100) NOT NULL,
-  `note` text NOT NULL,
+  `note` text,
   `json` text,
   PRIMARY KEY (`id`),
   KEY `id_segment` (`id_segment`) USING BTREE
@@ -813,6 +857,27 @@ CREATE TABLE `segment_revisions` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `segment_translation_events`
+--
+
+DROP TABLE IF EXISTS `segment_translation_events`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `segment_translation_events` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id_job` bigint(20) NOT NULL,
+  `id_segment` bigint(20) NOT NULL,
+  `uid` bigint(20) NOT NULL,
+  `version_number` int(11) NOT NULL,
+  `source_page` tinyint(4) NOT NULL,
+  `status` varchar(45) NOT NULL,
+  PRIMARY KEY (`id`,`id_job`),
+  KEY `id_job` (`id_job`) USING BTREE,
+  KEY `id_segment` (`id_segment`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `segment_translation_versions`
 --
 
@@ -830,6 +895,8 @@ CREATE TABLE `segment_translation_versions` (
   `time_to_edit` int(11) DEFAULT NULL,
   `is_review` tinyint(4) NOT NULL DEFAULT '0',
   `raw_diff` text,
+  `old_status` int(11) DEFAULT NULL,
+  `new_status` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `id_segment` (`id_segment`) USING BTREE,
   KEY `id_job` (`id_job`) USING BTREE,
@@ -1131,17 +1198,18 @@ USE `matecat`;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2017-12-19 15:52:34
+-- Dump completed on 2019-03-22 13:27:13
 
 
 INSERT INTO `engines` VALUES (10,'NONE','NONE','No MT','','',NULL,NULL,NULL,'{}','NONE','',NULL,100,0,NULL);
-INSERT INTO `engines` VALUES (11,'MyMemory (All Pairs)','TM','Machine translation from Google Translate and Microsoft Translator.','http://api.mymemory.translated.net','get','set','update','delete','{\"gloss_get_relative_url\":\"glossary/get\",\"gloss_set_relative_url\":\"glossary/set\",\"gloss_update_relative_url\":\"glossary/update\",\"glossary_import_relative_url\":\"glossary/import\",\"glossary_export_relative_url\":\"glossary/export\",\"gloss_delete_relative_url\":\"glossary/delete\",\"tmx_import_relative_url\":\"tmx/import\",\"tmx_status_relative_url\":\"tmx/status\",\"tmx_export_create_url\":\"tmx/export/create\",\"tmx_export_check_url\":\"tmx/export/check\",\"tmx_export_download_url\":\"tmx/export/download\",\"tmx_export_list_url\":\"tmx/export/list\",\"tmx_export_email_url\":\"tmx/export/create\",\"api_key_create_user_url\":\"createranduser\",\"api_key_check_auth_url\":\"authkey\",\"analyze_url\":\"analyze\",\"detect_language_url\":\"langdetect.php\"}','MyMemory','{}','1',0,1,NULL);
+INSERT INTO `engines` VALUES (11,'MyMemory (All Pairs)','TM','Machine translation from Google Translate and DeepL.','http://api.mymemory.translated.net','get','set','update','delete',
+                                 '{\"gloss_get_relative_url\":\"glossary/get\",\"gloss_set_relative_url\":\"glossary/set\",\"gloss_update_relative_url\":\"glossary/update\",\"glossary_import_relative_url\":\"glossary/import\",\"glossary_export_relative_url\":\"glossary/export\",\"gloss_delete_relative_url\":\"glossary/delete\",\"tmx_import_relative_url\":\"tmx/import\",\"tmx_status_relative_url\":\"tmx/status\",\"tmx_export_create_url\":\"tmx/export/create\",\"tmx_export_check_url\":\"tmx/export/check\",\"tmx_export_download_url\":\"tmx/export/download\",\"tmx_export_list_url\":\"tmx/export/list\",\"tmx_export_email_url\":\"tmx/export/create\",\"api_key_create_user_url\":\"createranduser\",\"api_key_check_auth_url\":\"authkey\",\"analyze_url\":\"analyze\",\"detect_language_url\":\"langdetect.php\"}','MyMemory','{}','1',0,1,NULL);
 
 UPDATE engines SET id = 0 WHERE id = 10 ;
 UPDATE engines SET id = 1 WHERE id = 11 ;
 
 -- populate sequences
-INSERT INTO sequences ( id_segment, id_project ) VALUES ( IFNULL( (SELECT MAX(id) + 1 FROM segments), 1), IFNULL( (SELECT MAX(id) + 1 FROM projects), 1)  );
+INSERT INTO sequences ( id_segment, id_project, id_dqf_project ) VALUES ( IFNULL( (SELECT MAX(id) + 1 FROM segments), 1), IFNULL( (SELECT MAX(id) + 1 FROM projects), 1), 1 );
 
 #Create the user 'matecat'@'%' IF NOT EXISTS
 -- CREATE USER 'matecat'@'%' IDENTIFIED BY 'matecat01';
@@ -1198,9 +1266,9 @@ GRANT DROP ON `matecat`.`jobs_stats` TO 'PEEWorker'@'%' IDENTIFIED BY 'matecat02
 
 USE `matecat`;
 
--- MySQL dump 10.13  Distrib 5.7.20, for Linux (x86_64)
+-- MySQL dump 10.13  Distrib 5.7.25, for Linux (x86_64)
 --
--- Host: 127.0.0.1    Database: matecat_old
+-- Host: 127.0.0.1    Database: matecat
 -- ------------------------------------------------------
 -- Server version	5.5.30
 
@@ -1280,7 +1348,7 @@ INSERT INTO `phinxlog` VALUES (20170410135242,'2017-04-12 13:01:28','2017-04-12 
 INSERT INTO `phinxlog` VALUES (20170428150013,'2017-05-03 13:36:24','2017-05-03 13:36:25');
 INSERT INTO `phinxlog` VALUES (20170504163201,'2017-05-04 18:38:49','2017-05-04 18:38:50');
 INSERT INTO `phinxlog` VALUES (20170511110439,'2017-07-24 11:53:46','2017-07-24 11:53:46');
-INSERT INTO `phinxlog` VALUES (20170518102926,'2017-07-24 11:55:03','2017-07-24 11:55:03');
+INSERT INTO `phinxlog` VALUES (20170518102926,'2018-02-06 16:44:29','2018-02-06 16:44:30');
 INSERT INTO `phinxlog` VALUES (20170605191514,'2017-09-26 17:09:13','2017-09-26 17:09:13');
 INSERT INTO `phinxlog` VALUES (20170711124125,'2017-09-26 19:09:22','2017-09-26 19:09:23');
 INSERT INTO `phinxlog` VALUES (20170712141010,'2017-09-26 19:09:23','2017-09-26 19:09:23');
@@ -1293,6 +1361,11 @@ INSERT INTO `phinxlog` VALUES (20171004154445,'2017-12-18 13:33:09','2017-12-18 
 INSERT INTO `phinxlog` VALUES (20171106115121,'2017-12-18 13:33:10','2017-12-18 13:33:12');
 INSERT INTO `phinxlog` VALUES (20171129152525,'2017-11-30 12:39:09','2017-11-30 12:39:13');
 INSERT INTO `phinxlog` VALUES (20171214110059,'2017-12-18 16:48:13','2017-12-18 16:48:14');
+INSERT INTO `phinxlog` VALUES (20180207155126,'2018-03-30 17:15:01','2018-03-30 17:15:03');
+INSERT INTO `phinxlog` VALUES (20180330145502,'2018-03-30 17:15:03','2018-03-30 17:15:16');
+INSERT INTO `phinxlog` VALUES (20180921144444,'2018-09-21 16:47:50','2018-09-21 16:47:52');
+INSERT INTO `phinxlog` VALUES (20180924143503,'2018-09-25 10:47:17','2018-09-25 10:47:20');
+INSERT INTO `phinxlog` VALUES (20181026145655,'2018-10-31 12:59:37','2018-10-31 12:59:38');
 /*!40000 ALTER TABLE `phinxlog` ENABLE KEYS */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -1304,4 +1377,4 @@ INSERT INTO `phinxlog` VALUES (20171214110059,'2017-12-18 16:48:13','2017-12-18 
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2017-12-19 15:52:35
+-- Dump completed on 2019-03-22 13:27:13

@@ -323,6 +323,15 @@ class FilesStorage {
 
     }
 
+    public function getOriginalZipDir( $projectDate, $projectID ){
+
+        $datePath = date_create( $projectDate )->format('Ymd');
+        $zipDir = $this->zipDir . DIRECTORY_SEPARATOR . $datePath . DIRECTORY_SEPARATOR . $projectID;
+
+        return $zipDir;
+
+    }
+
     public function getHashesFromDir( $dirToScan ){
 
         //fetch cache links, created by converter, from a directory
@@ -576,10 +585,12 @@ class FilesStorage {
             $where_id_file = " and id_file=$id_file";
         }
 
-        $query = "select fj.id_file, f.filename, f.id_project, j.source, mime_type, sha1_original_file from files_job fj
-			inner join files f on f.id=fj.id_file
-			join jobs as j on j.id=fj.id_job
-			where fj.id_job = $id_job $where_id_file group by id_file";
+        $query = "SELECT fj.id_file, f.filename, f.id_project, j.source, mime_type, sha1_original_file 
+            FROM files_job fj
+            INNER JOIN files f ON f.id=fj.id_file
+            JOIN jobs AS j ON j.id=fj.id_job
+            WHERE fj.id_job = $id_job $where_id_file 
+            GROUP BY id_file";
 
         $db      = Database::obtain();
         $results = $db->fetch_array( $query );
@@ -650,12 +661,14 @@ class FilesStorage {
     }
 
     /**
+     * PHP Pathinfo is not UTF-8 aware, so we rewrite it
+     *
      * @param     $path
      * @param int $options
      *
      * @return array|mixed
      */
-    public static function pathinfo_fix( $path, $options=15) {
+    public static function pathinfo_fix( $path, $options = 15 ) {
         $rawPath = explode( DIRECTORY_SEPARATOR, $path );
 
         $basename = array_pop( $rawPath );
@@ -665,17 +678,17 @@ class FilesStorage {
         $extension        = strtolower( array_pop( $explodedFileName ) );
         $filename         = implode( ".", $explodedFileName );
 
-        $return_array = array();
+        $return_array = [];
 
-        $flagMap = array(
+        $flagMap = [
                 'dirname'   => PATHINFO_DIRNAME,
                 'basename'  => PATHINFO_BASENAME,
                 'extension' => PATHINFO_EXTENSION,
                 'filename'  => PATHINFO_FILENAME
-        );
+        ];
 
         // foreach flag, add in $return_array the corresponding field,
-        // obtained by variable name correspondance
+        // obtained by variable name correspondence
         foreach ( $flagMap as $field => $i ) {
             //binary AND
             if ( ( $options & $i ) > 0 ) {
@@ -693,7 +706,7 @@ class FilesStorage {
     }
 
     private function link($source, $destination) {
-        return EnvWrap::link($source, $destination);
+        return link($source, $destination);
     }
 
     /**
@@ -734,6 +747,10 @@ class FilesStorage {
      */
     public static function deleteFastAnalysisFile( $id_project ){
         return unlink( INIT::$ANALYSIS_FILES_REPOSITORY . DIRECTORY_SEPARATOR . "waiting_analysis_{$id_project}.ser" );
+    }
+
+    public function getZipDir(){
+        return $this->zipDir;
     }
 
 }

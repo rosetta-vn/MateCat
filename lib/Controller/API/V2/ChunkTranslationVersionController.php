@@ -9,22 +9,35 @@
 namespace API\V2;
 
 use API\V2\Json\SegmentVersion as JsonFormatter;
+use API\V2\Validators\ChunkPasswordValidator;
+use Chunks_ChunkStruct;
 
 
 class ChunkTranslationVersionController extends KleinController {
 
     /**
-     * @var Validators\ChunkPasswordValidator
+     * @var Chunks_ChunkStruct
      */
-    private $validator;
+    protected $chunk;
+
+    /**
+     * @param Chunks_ChunkStruct $chunk
+     *
+     * @return $this
+     */
+    public function setChunk( $chunk ) {
+        $this->chunk = $chunk;
+
+        return $this;
+    }
 
     public function index() {
 
-        $results = \Translations_TranslationVersionDao::getVersionsForChunk(
-                $this->validator->getChunk()
-        );
+        $results = \Translations_TranslationVersionDao::getVersionsForChunk( $this->chunk );
 
-        $formatted = new JsonFormatter( $results );
+        $this->featureSet->loadForProject( $this->chunk->getProject() );
+
+        $formatted = new JsonFormatter( $results, false, $this->featureSet );
 
         $this->response->json( array(
                 'versions' => $formatted->render()
@@ -33,11 +46,12 @@ class ChunkTranslationVersionController extends KleinController {
     }
 
     protected function afterConstruct() {
-        $this->validator = new Validators\ChunkPasswordValidator( $this->request );
-    }
-
-    protected function validateRequest() {
-        $this->validator->validate();
+        $Validator = new ChunkPasswordValidator( $this ) ;
+        $Controller = $this;
+        $Validator->onSuccess( function () use ( $Validator, $Controller ) {
+            $Controller->setChunk( $Validator->getChunk() );
+        } );
+        $this->appendValidator( $Validator );
     }
 
 }

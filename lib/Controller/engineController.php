@@ -14,16 +14,11 @@ class engineController extends ajaxController {
     private $name;
     private $engineData;
 
-    /**
-     * @var Features
-     */
-    private $feature_set;
-
     private static $allowed_actions           = [
             'add', 'delete', 'execute'
     ];
     private static $allowed_execute_functions = [
-            'letsmt' => [ 'getTermList' ]
+            // 'letsmt' => [ 'getTermList' ] // letsmt no longer requires this function. it's left as an example
     ];
 
     public function __construct() {
@@ -31,7 +26,7 @@ class engineController extends ajaxController {
         parent::__construct();
 
         //Session Enabled
-        $this->checkLogin();
+        $this->readLoginInfo();
         //Session Disabled
 
         $filterArgs = [
@@ -81,8 +76,6 @@ class engineController extends ajaxController {
             ];
         }
 
-        $this->feature_set = new FeatureSet();
-
     }
 
     /**
@@ -128,15 +121,12 @@ class engineController extends ajaxController {
                 $newEngineStruct = EnginesModel_MicrosoftHubStruct::getStruct();
 
                 $newEngineStruct->name                                = $this->name;
-                $newEngineStruct->uid                                 = $this->uid;
+                $newEngineStruct->uid                                 = $this->user->uid;
                 $newEngineStruct->type                                = Constants_Engines::MT;
                 $newEngineStruct->extra_parameters[ 'client_id' ]     = $this->engineData[ 'client_id' ];
-                $newEngineStruct->extra_parameters[ 'client_secret' ] = $this->engineData[ 'secret' ];
                 $newEngineStruct->extra_parameters[ 'category' ]      = $this->engineData[ 'category' ];
-
                 break;
             case strtolower( Constants_Engines::MOSES ):
-            case strtolower( Constants_Engines::TAUYOU ):
 
                 /**
                  * Create a record of type Moses
@@ -144,7 +134,22 @@ class engineController extends ajaxController {
                 $newEngineStruct = EnginesModel_MosesStruct::getStruct();
 
                 $newEngineStruct->name                                = $this->name;
-                $newEngineStruct->uid                                 = $this->uid;
+                $newEngineStruct->uid                                 = $this->user->uid;
+                $newEngineStruct->type                                = Constants_Engines::MT;
+                $newEngineStruct->base_url                            = $this->engineData[ 'url' ];
+                $newEngineStruct->extra_parameters[ 'client_secret' ] = $this->engineData[ 'secret' ];
+
+                break;
+
+            case strtolower( Constants_Engines::TAUYOU ):
+
+                /**
+                 * Create a record of type Moses
+                 */
+                $newEngineStruct = EnginesModel_TauyouStruct::getStruct();
+
+                $newEngineStruct->name                                = $this->name;
+                $newEngineStruct->uid                                 = $this->user->uid;
                 $newEngineStruct->type                                = Constants_Engines::MT;
                 $newEngineStruct->base_url                            = $this->engineData[ 'url' ];
                 $newEngineStruct->extra_parameters[ 'client_secret' ] = $this->engineData[ 'secret' ];
@@ -159,7 +164,7 @@ class engineController extends ajaxController {
                 $newEngineStruct = EnginesModel_IPTranslatorStruct::getStruct();
 
                 $newEngineStruct->name                                = $this->name;
-                $newEngineStruct->uid                                 = $this->uid;
+                $newEngineStruct->uid                                 = $this->user->uid;
                 $newEngineStruct->type                                = Constants_Engines::MT;
                 $newEngineStruct->extra_parameters[ 'client_secret' ] = $this->engineData[ 'secret' ];
 
@@ -173,7 +178,7 @@ class engineController extends ajaxController {
                 $newEngineStruct = EnginesModel_ApertiumStruct::getStruct();
 
                 $newEngineStruct->name                                = $this->name;
-                $newEngineStruct->uid                                 = $this->uid;
+                $newEngineStruct->uid                                 = $this->user->uid;
                 $newEngineStruct->type                                = Constants_Engines::MT;
                 $newEngineStruct->extra_parameters[ 'client_secret' ] = $this->engineData[ 'secret' ];
 
@@ -187,7 +192,7 @@ class engineController extends ajaxController {
                 $newEngineStruct = EnginesModel_AltlangStruct::getStruct();
 
                 $newEngineStruct->name                                = $this->name;
-                $newEngineStruct->uid                                 = $this->uid;
+                $newEngineStruct->uid                                 = $this->user->uid;
                 $newEngineStruct->type                                = Constants_Engines::MT;
                 $newEngineStruct->extra_parameters[ 'client_secret' ] = $this->engineData[ 'secret' ];
 
@@ -201,38 +206,9 @@ class engineController extends ajaxController {
                 $newEngineStruct = EnginesModel_LetsMTStruct::getStruct();
 
                 $newEngineStruct->name                            = $this->name;
-                $newEngineStruct->uid                             = $this->uid;
+                $newEngineStruct->uid                             = $this->user->uid;
                 $newEngineStruct->type                            = Constants_Engines::MT;
-                $newEngineStruct->extra_parameters[ 'client_id' ] = $this->engineData[ 'client_id' ];
-                $newEngineStruct->extra_parameters[ 'system_id' ] = $this->engineData[ 'system_id' ]; // whether this has been set or not indicates whether we should
-                // return the newly added system's id or the list of available systems
-                // for the user to choose from. the check happens later on
-                $newEngineStruct->extra_parameters[ 'terms_id' ]    = $this->engineData[ 'terms_id' ];
-                $newEngineStruct->extra_parameters[ 'use_qe' ]      = $this->engineData[ 'use_qe' ];
-                $newEngineStruct->extra_parameters[ 'source_lang' ] = $this->engineData[ 'source_lang' ];
-                $newEngineStruct->extra_parameters[ 'target_lang' ] = $this->engineData[ 'target_lang' ];
-
-                if ( $newEngineStruct->extra_parameters[ 'use_qe' ] ) {
-                    $minQEString = $this->engineData[ 'minimum_qe' ];
-                    if ( !is_numeric( $minQEString ) ) {
-                        $this->result[ 'errors' ][] = [
-                                'code'    => -13,
-                                'message' => "Minimum QE score should be a number between 0 and 1."
-                        ];
-
-                        return;
-                    }
-                    $minimumQEScore = floatval( $minQEString );
-                    if ( $minimumQEScore < 0 || $minimumQEScore > 1 ) {
-                        $this->result[ 'errors' ][] = [
-                                'code'    => -13,
-                                'message' => "Minimum QE score should be a number between 0 and 1."
-                        ];
-
-                        return;
-                    }
-                    $newEngineStruct->extra_parameters[ 'minimum_qe' ] = $minimumQEScore;
-                }
+                $newEngineStruct->extra_parameters[ 'config_json' ] = $this->engineData[ 'tildemt_config' ];
 
                 break;
 
@@ -244,7 +220,7 @@ class engineController extends ajaxController {
                 $newEngineStruct = EnginesModel_SmartMATEStruct::getStruct();
 
                 $newEngineStruct->name                                = $this->name;
-                $newEngineStruct->uid                                 = $this->uid;
+                $newEngineStruct->uid                                 = $this->user->uid;
                 $newEngineStruct->type                                = Constants_Engines::MT;
                 $newEngineStruct->extra_parameters[ 'client_id' ]     = $this->engineData[ 'client_id' ];
                 $newEngineStruct->extra_parameters[ 'client_secret' ] = $this->engineData[ 'secret' ];
@@ -259,7 +235,21 @@ class engineController extends ajaxController {
                 $newEngineStruct = EnginesModel_YandexTranslateStruct::getStruct();
 
                 $newEngineStruct->name                                = $this->name;
-                $newEngineStruct->uid                                 = $this->uid;
+                $newEngineStruct->uid                                 = $this->user->uid;
+                $newEngineStruct->type                                = Constants_Engines::MT;
+                $newEngineStruct->extra_parameters[ 'client_secret' ] = $this->engineData[ 'secret' ];
+
+                break;
+
+            case strtolower( Constants_Engines::GOOGLE_TRANSLATE ):
+
+                /**
+                 * Create a record of type GoogleTranslate
+                 */
+                $newEngineStruct = EnginesModel_GoogleTranslateStruct::getStruct();
+
+                $newEngineStruct->name                                = $this->name;
+                $newEngineStruct->uid                                 = $this->user->uid;
                 $newEngineStruct->type                                = Constants_Engines::MT;
                 $newEngineStruct->extra_parameters[ 'client_secret' ] = $this->engineData[ 'secret' ];
 
@@ -267,9 +257,9 @@ class engineController extends ajaxController {
 
             default:
 
-                $validEngine = $newEngineStruct = $this->feature_set->filter( 'buildNewEngineStruct', false, (object)[
+                $validEngine = $newEngineStruct = $this->featureSet->filter( 'buildNewEngineStruct', false, (object)[
                         'providerName' => $this->provider,
-                        'logged_user'  => $this->logged_user,
+                        'logged_user'  => $this->user,
                         'engineData'   => $this->engineData
                 ] );
                 break;
@@ -282,7 +272,7 @@ class engineController extends ajaxController {
             return;
         }
 
-        $engineList = $this->feature_set->filter( 'getAvailableEnginesListForUser', Constants_Engines::getAvailableEnginesList(), $this->logged_user );
+        $engineList = $this->featureSet->filter( 'getAvailableEnginesListForUser', Constants_Engines::getAvailableEnginesList(), $this->user );
 
         $engineDAO             = new EnginesModel_EngineDAO( Database::obtain() );
         $newCreatedDbRowStruct = null;
@@ -293,7 +283,7 @@ class engineController extends ajaxController {
 
         if ( !$newCreatedDbRowStruct instanceof EnginesModel_EngineStruct ) {
 
-            $this->result[ 'errors' ][] = $this->feature_set->filter(
+            $this->result[ 'errors' ][] = $this->featureSet->filter(
                     'engineCreationFailed',
                     [ 'code' => -9, 'message' => "Creation failed. Generic error" ],
                     $newEngineStruct->class_load
@@ -308,7 +298,7 @@ class engineController extends ajaxController {
             $config              = $newTestCreatedMT->getConfigStruct();
             $config[ 'segment' ] = "Hello World";
             $config[ 'source' ]  = "en-US";
-            $config[ 'target' ]  = "fr-FR";
+            $config[ 'target' ]  = "it-IT";
 
             $mt_result = $newTestCreatedMT->get( $config );
 
@@ -338,46 +328,32 @@ class engineController extends ajaxController {
 
                 return;
             }
+            
+        } elseif ( $newEngineStruct instanceof EnginesModel_LetsMTStruct ) {
+            // TODO: Do a simple translation request so that the system wakes up by the time the user needs it for translating
+            // TODO: Tilde MT engine allows to select multiple translation systems. Should we wake up all of them?
+            //$newTestCreatedMT = Engine::getInstance( $newCreatedDbRowStruct->id );
+            //$newTestCreatedMT->wakeUp(); // ????
+        } elseif ( $newEngineStruct instanceof EnginesModel_GoogleTranslateStruct ) {
 
-        } elseif ( $newEngineStruct instanceof EnginesModel_LetsMTStruct && empty( $this->engineData[ 'system_id' ] ) ) {
-            // the user has not selected a translation system. only the User ID and the engine's name has been entered
-            // get the list of available systems and return it to the user
+            $newTestCreatedMT    = Engine::getInstance( $newCreatedDbRowStruct->id );
+            $config              = $newTestCreatedMT->getConfigStruct();
+            $config[ 'segment' ] = "Hello World";
+            $config[ 'source' ]  = "en-US";
+            $config[ 'target' ]  = "fr-FR";
 
-            $newTestCreatedMT = Engine::getInstance( $newCreatedDbRowStruct->id );
-            $config           = $newTestCreatedMT->getConfigStruct();
-            $systemList       = $newTestCreatedMT->getSystemList( $config );
+            $mt_result = $newTestCreatedMT->get( $config );
 
-            $engineDAO->delete( $newCreatedDbRowStruct ); // delete the newly added engine. this is the first time in engineController::add()
-            // and the user has not yet selected a translation system
-            if ( isset( $systemList[ 'error' ][ 'code' ] ) ) {
-                $this->result[ 'errors' ][] = $systemList[ 'error' ];
+            if ( isset( $mt_result[ 'error' ][ 'code' ] ) ) {
+                $this->result[ 'errors' ][] = $mt_result[ 'error' ];
+                $engineDAO->delete( $newCreatedDbRowStruct );
 
                 return;
             }
-
-            $uiConfig = [
-                    'client_id' => [ 'value' => $this->engineData[ 'client_id' ] ],
-                    'system_id' => [],
-                    'terms_id'  => []
-            ];
-            foreach ( $systemList as $systemID => $systemInfo ) {
-                $uiConfig[ 'system_id' ][ $systemID ] = [
-                        'value' => $systemInfo[ 'name' ],
-                        'data'  => $systemInfo[ 'metadata' ]
-                ];
-            }
-
-            $this->result[ 'name' ]             = $this->name;
-            $this->result[ 'data' ][ 'config' ] = $uiConfig;
-        } elseif ( $newEngineStruct instanceof EnginesModel_LetsMTStruct ) {
-            // The user has added and configured the Tilde MT engine (the System ID has been set)
-            // Do a simple translation request so that the system wakes up by the time the user needs it for translating
-            $newTestCreatedMT = Engine::getInstance( $newCreatedDbRowStruct->id );
-            $newTestCreatedMT->wakeUp();
         } else {
 
             try {
-                $this->feature_set->run( 'postEngineCreation', $newCreatedDbRowStruct, $this->logged_user );
+                $this->featureSet->run( 'postEngineCreation', $newCreatedDbRowStruct, $this->user );
             } catch ( Exception $e ) {
                 $this->result[ 'errors' ][] = [ 'code' => $e->getCode(), 'message' => $e->getMessage() ];
 
@@ -404,7 +380,7 @@ class engineController extends ajaxController {
 
         $engineToBeDeleted      = EnginesModel_EngineStruct::getStruct();
         $engineToBeDeleted->id  = $this->id;
-        $engineToBeDeleted->uid = $this->uid;
+        $engineToBeDeleted->uid = $this->user->uid;
 
         $engineDAO = new EnginesModel_EngineDAO( Database::obtain() );
         $result    = $engineDAO->disable( $engineToBeDeleted );
@@ -415,7 +391,7 @@ class engineController extends ajaxController {
             return;
         }
 
-        $this->feature_set->run( 'postEngineDeletion', $result );
+        $this->featureSet->run( 'postEngineDeletion', $result );
 
         $this->result[ 'data' ][ 'id' ] = $result->id;
 
@@ -438,7 +414,7 @@ class engineController extends ajaxController {
                 $tempEngineRecord = EnginesModel_LetsMTStruct::getStruct();
 
                 $tempEngineRecord->name                            = $this->name;
-                $tempEngineRecord->uid                             = $this->uid;
+                $tempEngineRecord->uid                             = $this->user->uid;
                 $tempEngineRecord->type                            = Constants_Engines::MT;
                 $tempEngineRecord->extra_parameters[ 'client_id' ] = $this->engineData[ 'client_id' ];
                 $tempEngineRecord->extra_parameters[ 'system_id' ] = $this->engineData[ 'system_id' ];

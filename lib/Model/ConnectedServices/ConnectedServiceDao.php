@@ -15,9 +15,14 @@ class ConnectedServiceDao extends \DataAccess_AbstractDao {
     const TABLE = 'connected_services' ;
     const GDRIVE_SERVICE = 'gdrive' ;
 
-    protected static $primary_keys = array('id');
-    protected static $auto_increment_fields = array('id');
+    protected static $primary_keys         = array('id');
+    protected static $auto_increment_field = array('id');
 
+    /**
+     * @param $id
+     *
+     * @return ConnectedServiceStruct
+     */
     public function findById( $id ) {
         $conn = $this->con->getConnection() ;
         $stmt = $conn->prepare(
@@ -168,6 +173,21 @@ class ConnectedServiceDao extends \DataAccess_AbstractDao {
             'uid' => $user->uid,
             'service' => $service,
             'email' => $email
+        ));
+
+        return $stmt->fetch();
+    }
+
+    public function findByRemoteIdAndCode( $remote_id, $service ) {
+        $stmt = $this->con->getConnection()->prepare(
+                " SELECT * FROM connected_services WHERE " .
+                " uid = :remote_id AND service = :service "
+        );
+
+        $stmt->setFetchMode( \PDO::FETCH_CLASS, 'ConnectedServices\ConnectedServiceStruct' );
+        $stmt->execute( array(
+                'service'   => $service,
+                'remote_id' => $remote_id
         ));
 
         return $stmt->fetch();

@@ -3,6 +3,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
+
+use Segments\ContextGroupDao;
+
 class getSegmentsController extends ajaxController {
 
     private $data = array();
@@ -14,9 +17,6 @@ class getSegmentsController extends ajaxController {
     private $pname = "";
     private $err = '';
     private $create_date = "";
-    private $filetype_handler = null;
-    private $start_from = 0;
-    private $page = 0;
 
     /**
      * @var Chunks_ChunkStruct
@@ -27,11 +27,6 @@ class getSegmentsController extends ajaxController {
      * @var Projects_ProjectStruct
      */
     private $project ;
-
-    /**
-     * @var FeatureSet
-     */
-    private $feature_set ;
 
     private $segment_notes ;
 
@@ -74,10 +69,10 @@ class getSegmentsController extends ajaxController {
             return;
         }
 
-        $this->job = Chunks_ChunkDao::getByIdAndPassword( $this->jid, $this->password );
-        $this->project = $this->job->getProject();
-        $this->feature_set = new FeatureSet();
-        $this->feature_set->loadForProject( $this->project ) ;
+        $this->job        = Chunks_ChunkDao::getByIdAndPassword( $this->jid, $this->password );
+        $this->project    = $this->job->getProject();
+
+        $this->featureSet->loadForProject( $this->project ) ;
 
 		$lang_handler = Langs_Languages::getInstance();
 
@@ -93,6 +88,7 @@ class getSegmentsController extends ajaxController {
         );
 
         $this->prepareNotes( $data );
+        $contexts = $this->getContextGroups( $data );
 
 		foreach ($data as $i => $seg) {
 
@@ -163,7 +159,7 @@ class getSegmentsController extends ajaxController {
                 $this->data["$id_file"]['segments'] = array();
             }
 
-            $seg = $this->feature_set->filter('filter_get_segments_segment_data', $seg) ;
+            $seg = $this->featureSet->filter('filter_get_segments_segment_data', $seg) ;
 
             unset($seg['id_file']);
             unset($seg['source']);
@@ -189,15 +185,20 @@ class getSegmentsController extends ajaxController {
             $seg['source_chunk_lengths'] = json_decode( $seg['source_chunk_lengths'], true );
             $seg['target_chunk_lengths'] = json_decode( $seg['target_chunk_lengths'], true );
 
-            $seg['segment'] = CatUtils::rawxliff2view( CatUtils::reApplySegmentSplit(
-                $seg['segment'] , $seg['source_chunk_lengths'] )
+            $Filter = \SubFiltering\Filter::getInstance( $this->featureSet );
+            $seg['segment'] = $Filter->fromLayer0ToLayer1(
+                    CatUtils::reApplySegmentSplit( $seg['segment'] , $seg['source_chunk_lengths'] )
             );
 
-            $seg['translation'] = CatUtils::rawxliff2view( CatUtils::reApplySegmentSplit(
-                $seg['translation'] , $seg['target_chunk_lengths'][ 'len' ] )
+            $seg['translation'] = $Filter->fromLayer0ToLayer1(
+                    CatUtils::reApplySegmentSplit( $seg['translation'] , $seg['target_chunk_lengths'][ 'len' ] )
             );
+
+            $seg['translation'] = $Filter->fromLayer1ToLayer2( $Filter->realignIDInLayer1( $seg['segment'], $seg['translation'] ) );
+            $seg['segment']     = $Filter->fromLayer1ToLayer2( $seg['segment'] );
 
             $this->attachNotes( $seg );
+            $this->attachContexts( $seg, $contexts );
 
             $this->data["$id_file"]['segments'][] = $seg;
         }
@@ -216,7 +217,7 @@ class getSegmentsController extends ajaxController {
             $options['optional_fields'] = array('st.version_number');
         }
 
-        $options = $this->feature_set->filter('filter_get_segments_optional_fields', $options);
+        $options = $this->featureSet->filter('filter_get_segments_optional_fields', $options);
 
         return $options;
     }
@@ -230,10 +231,31 @@ class getSegmentsController extends ajaxController {
             $start = $segments[0]['sid'];
             $last = end($segments);
             $stop = $last['sid'];
+            if( $this->featureSet->filter( 'prepareAllNotes', false ) ){
+                $this->segment_notes = Segments_SegmentNoteDao::getAllAggregatedBySegmentIdInInterval($start, $stop);
+                foreach ( $this->segment_notes as $k => $noteObj ){
+                    $this->segment_notes[ $k ][ 0 ][ 'json' ] = json_decode( $noteObj[ 0 ][ 'json' ], true );
+                }
+                $this->segment_notes = $this->featureSet->filter( 'processExtractedJsonNotes', $this->segment_notes );
+            } else {
+                $this->segment_notes = Segments_SegmentNoteDao::getAggregatedBySegmentIdInInterval($start, $stop);
+            }
 
-            $this->segment_notes = Segments_SegmentNoteDao::getAggregatedBySegmentIdInInterval($start, $stop);
         }
 
+    }
+
+    private function getContextGroups( $segments ){
+        if ( ! empty( $segments[0] ) ) {
+            $start = $segments[0]['sid'];
+            $last = end($segments);
+            $stop = $last['sid'];
+            return ( new ContextGroupDao() )->getBySIDRange( $start, $stop );
+        }
+    }
+
+    private function attachContexts( &$segment, $contexts ){
+        $segment['context_groups'] = @$contexts[ (int) $segment['sid'] ] ;
     }
 
 
